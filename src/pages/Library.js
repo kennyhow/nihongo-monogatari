@@ -13,76 +13,88 @@ const Library = (parentElement) => {
       : allStories.filter(s => s.level === currentFilter);
 
     const html = `
-      <div class="library-header" style="margin-bottom: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-          <h1 style="margin: 0;">Story Library</h1>
-          <button id="create-btn" class="btn" style="display: flex; align-items: center; gap: 0.5rem;">
-            <span>✨</span> Create New
-          </button>
+      <div class="library-wrapper" style="height: 100%;">
+        <div class="library-header" style="margin-bottom: 2rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+            <h1 style="margin: 0;">Story Library</h1>
+            <button id="create-btn" class="btn" style="display: flex; align-items: center; gap: 0.5rem;">
+              <span>✨</span> Create New
+            </button>
+          </div>
+          
+          <div class="filters" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            ${['All', 'Beginner', 'Intermediate', 'Advanced'].map(filter => `
+              <button class="filter-btn ${currentFilter === filter ? 'active' : ''}" 
+                data-filter="${filter}"
+                style="
+                  padding: 0.5rem 1rem; 
+                  border-radius: 9999px; 
+                  border: 1px solid var(--color-border);
+                  background: ${currentFilter === filter ? 'var(--color-primary)' : 'var(--color-surface)'};
+                  color: ${currentFilter === filter ? '#fff' : 'var(--color-text)'};
+                  cursor: pointer;
+                  font-size: 0.875rem;
+                  transition: all 0.2s;
+                "
+              >
+                ${filter}
+              </button>
+            `).join('')}
+          </div>
         </div>
         
-        <div class="filters" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          ${['All', 'Beginner', 'Intermediate', 'Advanced'].map(filter => `
-            <button class="filter-btn ${currentFilter === filter ? 'active' : ''}" 
-              data-filter="${filter}"
-              style="
-                padding: 0.5rem 1rem; 
-                border-radius: 9999px; 
-                border: 1px solid var(--color-border);
-                background: ${currentFilter === filter ? 'var(--color-primary)' : 'var(--color-surface)'};
-                color: ${currentFilter === filter ? '#fff' : 'var(--color-text)'};
-                cursor: pointer;
-                font-size: 0.875rem;
-                transition: all 0.2s;
-              "
-            >
-              ${filter}
-            </button>
-          `).join('')}
-        </div>
-      </div>
-      
-      <div class="story-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem;">
-        ${filteredStories.length > 0
+        <div class="story-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem;">
+          ${filteredStories.length > 0
         ? filteredStories.map(story => StoryCard(story)).join('')
         : '<p style="color: var(--color-text-muted); grid-column: 1/-1; text-align: center; padding: 2rem;">No stories found for this level yet.</p>'
       }
+        </div>
       </div>
     `;
 
     parentElement.innerHTML = html;
 
-    // Attach event listeners
-    parentElement.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        currentFilter = e.target.dataset.filter;
-        render();
-      });
-    });
+    // Single Event Listener using Delegation
+    const wrapper = parentElement.querySelector('.library-wrapper');
+    wrapper.addEventListener('click', (e) => {
+      // 1. Delete Story Button
+      const deleteBtn = e.target.closest('.delete-story-btn');
+      if (deleteBtn) {
+        e.stopPropagation(); // Stop bubbling immediately
+        e.preventDefault();
+        const id = deleteBtn.dataset.id;
+        console.log('Delete requested for:', id);
 
-    // Create Button
-    document.getElementById('create-btn').addEventListener('click', () => {
-      const modal = GeneratorModal({
-        onClose: () => { },
-        onGenerate: (newStory) => {
-          render();
-        }
-      });
-      document.body.appendChild(modal);
-    });
-
-    // Delete Buttons
-    parentElement.querySelectorAll('.delete-story-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        // Prevent navigation if inside a card link (though button is distinct, good validation)
-        e.stopPropagation();
-        const id = e.currentTarget.dataset.id;
         if (confirm('Are you sure you want to delete this story?')) {
           deleteStory(id);
           render();
         }
-      });
+        return;
+      }
+
+      // 2. Filter Buttons
+      const filterBtn = e.target.closest('.filter-btn');
+      if (filterBtn) {
+        currentFilter = filterBtn.dataset.filter;
+        render();
+        return;
+      }
+
+      // 3. Create Button
+      const createBtn = e.target.closest('#create-btn');
+      if (createBtn) {
+        const modal = GeneratorModal({
+          onClose: () => { },
+          onGenerate: (newStory) => {
+            render();
+          }
+        });
+        document.body.appendChild(modal);
+        return;
+      }
     });
+
+    // Note: No need to attach individual listeners anymore
   };
 
   render();

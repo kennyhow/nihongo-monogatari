@@ -28,4 +28,4 @@ A web application for learning Japanese through AI-generated stories with side-b
 1. **TTS Headers**: The Gemini TTS endpoint returns raw PCM audio (`wav` codec in expected MIME type). See `createWavHeader` in `api.js`.
 2. **Rate Limits**: `gemini-2.5-flash-preview-tts` is extremely strict. We use `AudioQueueManager` (`src/utils/audioQueue.js`) to strictly throttle requests. **Do not remove this throttling** or users will hit 429s immediately.
 3. **Environment**: `VITE_GOOGLE_API_KEY` in `.env` is required for AI features.
-3. **Persistence**: Generated stories are saved to `localStorage`. If modifying the data structure, ensure backward compatibility or handle migration in `storage.js`.
+4. **Persistence**: Generated stories are saved to `localStorage`. If modifying the data structure, ensure backward compatibility or handle migration in `storage.js`.

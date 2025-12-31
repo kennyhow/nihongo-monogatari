@@ -29,7 +29,7 @@ const StoryCard = (story) => {
             ${story.readTime} min
             </span>
             ${isGenerated ? `
-            <button class="delete-story-btn icon-btn" data-id="${story.id}" style="color: #ef4444; margin-left: 0.5rem;" title="Delete Story">
+            <button class="delete-story-btn icon-btn" data-id="${story.id}" style="color: #ef4444; margin-left: 0.5rem; position: absolute; top: 1.5rem; right: 1.5rem;" title="Delete Story">
                 🗑️
             </button>
             ` : ''}

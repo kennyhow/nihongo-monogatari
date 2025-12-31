@@ -87,20 +87,37 @@ class AudioQueueManager {
             }
 
             // Generate
-            const blob = await generateSpeech(item.text);
+            let blob;
+            try {
+                blob = await generateSpeech(item.text);
+            } catch (err) {
+                const errorMessage = err.toString();
+                const retryMatch = errorMessage.match(/Please retry in ([0-9.]+)s/);
+                if (retryMatch) {
+                    const waitSeconds = parseFloat(retryMatch[1]);
+                    console.warn(`TTS Rate Limit hit. Pausing queue for ${waitSeconds}s...`);
+
+                    // Wait for the requested time + small buffer
+                    await new Promise(resolve => setTimeout(resolve, (waitSeconds + 1) * 1000));
+
+                    // Reset item status to pending so it gets retried next loop
+                    item.status = 'pending';
+                    this.saveQueue();
+                    return;
+                }
+                // If not a rate limit error we recognise, throw it to be handled by outer catch
+                throw err;
+            }
 
             if (blob) {
                 await cache.put(cacheKey, new Response(blob));
                 this.removeFromQueue(item.id);
                 console.log('Queue item processed and cached');
             } else {
-                console.error('Failed to generate audio for queue item');
+                console.error('Failed to generate audio for queue item (Empty Blob)');
                 item.status = 'error';
                 item.errorCount = (item.errorCount || 0) + 1;
-                // If too many errors, move to end or remove? 
-                // For now, keep as error, maybe retry later manually or auto-retry?
-                // Let's set back to pending but push to end?
-                // Or just delete if persistent error.
+
                 if (item.errorCount > 3) {
                     this.removeFromQueue(item.id);
                 } else {

@@ -1,5 +1,6 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createWavHeader, base64ToBytes } from '../utils/audioHelpers.js';
 
 // Access the API key
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
@@ -64,44 +65,6 @@ export const generateStory = async (topic, level, instructions = '') => {
     }
 };
 
-// Helper to create WAV header
-const createWavHeader = (pcmDataLength, sampleRate = 24000) => {
-    const numChannels = 1;
-    const bitsPerSample = 16;
-    const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-    const blockAlign = numChannels * (bitsPerSample / 8);
-
-    const buffer = new ArrayBuffer(44);
-    const view = new DataView(buffer);
-
-    // "RIFF" chunk descriptor
-    writeString(view, 0, 'RIFF');
-    view.setUint32(4, 36 + pcmDataLength, true); // File size
-    writeString(view, 8, 'WAVE');
-
-    // "fmt " sub-chunk
-    writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true); // Subchunk1Size
-    view.setUint16(20, 1, true); // AudioFormat (1 = PCM)
-    view.setUint16(22, numChannels, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, byteRate, true);
-    view.setUint16(32, blockAlign, true);
-    view.setUint16(34, bitsPerSample, true);
-
-    // "data" sub-chunk
-    writeString(view, 36, 'data');
-    view.setUint32(40, pcmDataLength, true);
-
-    return buffer;
-};
-
-const writeString = (view, offset, string) => {
-    for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-    }
-};
-
 export const generateSpeech = async (text) => {
     if (!API_KEY) return null;
 
@@ -129,11 +92,7 @@ export const generateSpeech = async (text) => {
                 // Check for inline data with audio mime type
                 if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('audio')) {
                     const mimeType = part.inlineData.mimeType;
-                    const binaryString = window.atob(part.inlineData.data);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
+                    const bytes = base64ToBytes(part.inlineData.data);
 
                     // Parse Sample Rate
                     let sampleRate = 24000;
@@ -160,7 +119,7 @@ export const generateSpeech = async (text) => {
 
     } catch (error) {
         console.error('Gemini TTS Error', error);
-        return null;
+        throw error;
     }
 };
 
