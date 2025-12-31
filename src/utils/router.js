@@ -4,6 +4,7 @@ const routes = {
     '/': () => import('../pages/Home.js'),
     '/library': () => import('../pages/Library.js'),
     '/read': () => import('../pages/Read.js'),
+    '/queue': () => import('../pages/Queue.js'),
     '/settings': () => import('../pages/Settings.js')
 };
 
@@ -35,6 +36,11 @@ const handleRoute = async () => {
 
     // Clear root
     rootElement.innerHTML = '';
+
+    // Reset animation
+    rootElement.classList.remove('animate-fade-in');
+    void rootElement.offsetWidth; // Trigger reflow
+    rootElement.classList.add('animate-fade-in');
 
     // Render page
     Page(rootElement);

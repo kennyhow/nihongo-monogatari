@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 // Access the API key
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 
-export const generateStory = async (topic, level) => {
+export const generateStory = async (topic, level, instructions = '') => {
     if (!API_KEY) {
         throw new Error('API Key missing. Please check your .env file.');
     }
@@ -14,6 +14,7 @@ export const generateStory = async (topic, level) => {
 
     const prompt = `
     Create a unique short story in Japanese for a ${level} level learner about "${topic}".
+    ${instructions ? `\nAdditional Instructions: ${instructions}\n` : ''}
     
     Requirements:
     1. The story should be interesting and culturally relevant if possible.
@@ -21,7 +22,8 @@ export const generateStory = async (topic, level) => {
     3. For each sentence/segment, provide 1-2 vocabulary notes for key terms.
     4. "readTime" should be an estimated integer in minutes.
     5. "level" must be exactly "${level}".
-    6. Return ONLY valid JSON matching this structure:
+    6. "jp_furigana" field: Provide the Japanese text with HTML <ruby> tags for Kanji readings (e.g. <ruby>猫<rt>ねこ</rt></ruby>).
+    7. Return ONLY valid JSON matching this structure:
     
     {
       "titleJP": "Japanese Title",
@@ -32,6 +34,7 @@ export const generateStory = async (topic, level) => {
       "content": [
         {
           "jp": "Japanese sentence...",
+          "jp_furigana": "Japanese sentence with <ruby>...</ruby>",
           "en": "English translation...",
           "notes": [
             { "term": "nihongo", "meaning": "Japanese language" }

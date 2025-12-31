@@ -47,6 +47,19 @@ export const addStory = (story) => {
     localStorage.setItem('nihongo_stories', JSON.stringify(stories));
 };
 
+export const deleteStory = (id) => {
+    const stories = getStoredStories();
+    const filtered = stories.filter(s => s.id !== id);
+    localStorage.setItem('nihongo_stories', JSON.stringify(filtered));
+
+    // Cleanup progress
+    const allProgress = getAllProgress();
+    if (allProgress[id]) {
+        delete allProgress[id];
+        localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(allProgress));
+    }
+};
+
 // Progress
 export const saveProgress = (storyId, data) => {
     const allProgress = getAllProgress();

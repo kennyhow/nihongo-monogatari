@@ -1,7 +1,7 @@
 import StoryCard from '../components/StoryCard.js';
 import { sampleStories } from '../data/stories.js';
 import GeneratorModal from '../components/GeneratorModal.js';
-import { getStoredStories } from '../utils/storage.js';
+import { getStoredStories, deleteStory } from '../utils/storage.js';
 
 const Library = (parentElement) => {
   let currentFilter = 'All';
@@ -63,14 +63,25 @@ const Library = (parentElement) => {
     // Create Button
     document.getElementById('create-btn').addEventListener('click', () => {
       const modal = GeneratorModal({
-        onClose: () => { }, // Modal handles self-removal
+        onClose: () => { },
         onGenerate: (newStory) => {
-          render(); // Refresh list to show new story
-          // Optional: Navigate to it immediately
-          // window.location.hash = `#/read?id=${newStory.id}`;
+          render();
         }
       });
       document.body.appendChild(modal);
+    });
+
+    // Delete Buttons
+    parentElement.querySelectorAll('.delete-story-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        // Prevent navigation if inside a card link (though button is distinct, good validation)
+        e.stopPropagation();
+        const id = e.currentTarget.dataset.id;
+        if (confirm('Are you sure you want to delete this story?')) {
+          deleteStory(id);
+          render();
+        }
+      });
     });
   };
 

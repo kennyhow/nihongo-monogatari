@@ -10,31 +10,15 @@ export const playAudio = async (text, onEnd) => {
     cancelAudio(); // Stop any current audio
 
     try {
-        // 1. Check Cache
-        const cache = await caches.open(CACHE_NAME);
-        const cacheKey = new Request(`https://tts-cache/${encodeURIComponent(text)}`);
-        let response = await cache.match(cacheKey);
+        const audioBlob = await getAudioBlob(text);
 
-        let audioBlob;
-
-        if (response) {
-            console.log('Audio cache hit');
-            audioBlob = await response.blob();
-        } else {
-            console.log('Audio cache miss - Fetching from API');
-            // 2. Fetch from API
-            audioBlob = await generateSpeech(text);
-            if (audioBlob) {
-                // 3. Save to Cache
-                await cache.put(cacheKey, new Response(audioBlob));
-            } else {
-                // Fallback to browser TTS if API fails/returns null
-                playBrowserAudio(text, onEnd);
-                return;
-            }
+        if (!audioBlob) {
+            // Fallback to browser TTS if API fails/returns null
+            playBrowserAudio(text, onEnd);
+            return;
         }
 
-        // 4. Play Audio Blob
+        // Play Audio Blob
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
 
@@ -56,6 +40,46 @@ export const playAudio = async (text, onEnd) => {
         console.error('TTS Error, falling back to browser', err);
         playBrowserAudio(text, onEnd);
     }
+};
+
+// Helper: Get Cached Audio Blob ONLY.
+// We strictly rely on the background queue to populate the cache.
+// If it's not in cache, we return null so playAudio falls back to browser.
+const getAudioBlob = async (text) => {
+    try {
+        const cache = await caches.open(CACHE_NAME);
+        const cacheKey = new Request(`https://tts-cache/${encodeURIComponent(text)}`);
+        let response = await cache.match(cacheKey);
+
+        if (response) {
+            return await response.blob();
+        }
+
+        // Cache Miss: Do NOT call API. Return null.
+        console.log('Audio cache miss - Falling back to browser TTS');
+        return null;
+
+    } catch (e) {
+        console.error("Cache/Fetch error", e);
+    }
+    return null;
+};
+
+// New: Preload only the first few segments to save quota
+export const preloadStoryAudio = async (story) => {
+    console.log(`Starting lazy audio preload for: ${story.titleEN}`);
+    // Limit is very strict (approx 3/min), so only load the first segment.
+    // The user will likely spend >20s reading/listening to the first one.
+    if (story.content.length > 0) {
+        await getAudioBlob(story.content[0].jp);
+    }
+    // Optional: Try 2nd one after a delay if we want to risk it
+    // setTimeout(() => { if (story.content.length > 1) getAudioBlob(story.content[1].jp); }, 20000);
+};
+
+export const preloadNextSegment = async (text) => {
+    // Just a wrapper to fetch in background
+    getAudioBlob(text);
 };
 
 export const cancelAudio = () => {

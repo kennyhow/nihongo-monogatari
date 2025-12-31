@@ -1,6 +1,6 @@
 import { saveProgress, getStoryProgress, getSettings } from '../utils/storage.js';
 import ProgressBar from './ProgressBar.js';
-import { playAudio, cancelAudio } from '../utils/audio.js';
+import { playAudio, cancelAudio, preloadNextSegment } from '../utils/audio.js';
 
 const Reader = ({ story, initialProgress, onComplete }) => {
   const settings = getSettings();
@@ -22,8 +22,15 @@ const Reader = ({ story, initialProgress, onComplete }) => {
               <span style="font-size: 0.875rem; color: var(--color-text-muted);">${story.titleEN}</span>
             </div>
             
-             <button id="stop-audio-btn" class="icon-btn" style="color: var(--color-secondary);" title="Stop Audio">
-              🔇 Stop
+             <button id="stop-audio-btn" class="btn" style="
+               padding: 0.25rem 0.75rem; 
+               font-size: 0.875rem; 
+               background-color: transparent; 
+               color: var(--color-secondary); 
+               border: 1px solid var(--color-secondary);
+               box-shadow: none;
+             ">
+              ⏹️ Stop Audio
             </button>
           </div>
           ${ProgressBar({ current: currentProgress, total: 100 })}
@@ -53,7 +60,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
                   position: absolute; top: 0.5rem; right: 0.5rem; 
                   background: none; border: none; opacity: 0.3; font-size: 1rem; cursor: pointer;
                 ">🔊</button>
-                <p class="jp-text">${showFurigana ? addFurigana(segment.jp) : segment.jp}</p>
+                <p class="jp-text">${(showFurigana && segment.jp_furigana) ? segment.jp_furigana : segment.jp}</p>
               </div>
               
               <div class="en-segment" style="
@@ -145,6 +152,11 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       activeSegmentIndex = -1;
       render();
     });
+
+    // Lazy load next segment
+    if (index + 1 < story.content.length) {
+      preloadNextSegment(story.content[index + 1].jp);
+    }
   };
 
   // Helper for mock furigana (in a real app, this would be parsed better)

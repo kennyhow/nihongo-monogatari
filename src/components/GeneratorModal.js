@@ -1,6 +1,7 @@
 
 import { generateStory } from '../services/api.js';
 import { addStory } from '../utils/storage.js';
+import { audioQueue } from '../utils/audioQueue.js';
 
 const GeneratorModal = ({ onClose, onGenerate }) => {
   const html = `
@@ -8,20 +9,28 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
       position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
       display: flex; align-items: center; justify-content: center;
       padding: 1rem;
+      backdrop-filter: blur(4px);
     ">
       <div style="
         background: var(--color-surface); 
         width: 100%; max-width: 500px; 
         padding: 2rem; border-radius: var(--radius-lg);
         box-shadow: var(--shadow-lg);
+        animation: fadeIn 0.3s ease-out;
       ">
         <h2 style="margin-bottom: 1.5rem;">Create New Story</h2>
         
         <form id="generator-form">
-          <div style="margin-bottom: 1.5rem;">
+          <div style="margin-bottom: 1.25rem;">
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Topic</label>
             <input type="text" id="topic" required placeholder="e.g. A cat who loves sushi" 
-              style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+              style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: var(--font-en);">
+          </div>
+
+           <div style="margin-bottom: 1.25rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Style / Instructions (Optional)</label>
+            <textarea id="instructions" placeholder="e.g. Make it funny, whimsical, use casual speech..." 
+              style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: var(--font-en); resize: vertical; min-height: 80px;"></textarea>
           </div>
           
           <div style="margin-bottom: 2rem;">
@@ -72,6 +81,7 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const topic = document.getElementById('topic').value;
+    const instructions = document.getElementById('instructions').value;
     const level = document.getElementById('level').value;
 
     // Set Loading State
@@ -80,10 +90,13 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
     submitBtn.style.opacity = '0.7';
 
     try {
-      const newStory = await generateStory(topic, level);
+      const newStory = await generateStory(topic, level, instructions);
 
       // Save to local storage
       addStory(newStory);
+
+      // Enqueue for Background Processing (No more manual preload here)
+      audioQueue.enqueueStory(newStory);
 
       // Callback
       onGenerate(newStory);
