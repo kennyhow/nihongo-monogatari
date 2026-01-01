@@ -7,6 +7,7 @@
  */
 
 import { generateSpeech } from '../services/api.js';
+import { supabase, getSession } from './supabase.js';
 
 const CACHE_NAME = 'nihongo-audio-v2';
 const STORAGE_KEY = 'nihongo_audio_queue';
@@ -155,6 +156,15 @@ class AudioQueueManager {
 
                 pending.status = 'completed';
                 console.log(`Audio cached for: ${pending.storyTitle} Seg ${pending.segmentIndex + 1}`);
+
+                // 2. Upload to Supabase Storage
+                const session = await getSession();
+                if (session) {
+                    const filePath = `${session.user.id}/${pending.storyId}/full-story.wav`;
+                    await supabase.storage
+                        .from('audio-cache')
+                        .upload(filePath, audioBlob, { upsert: true });
+                }
             } else {
                 pending.status = 'error';
                 pending.error = 'No audio data received';

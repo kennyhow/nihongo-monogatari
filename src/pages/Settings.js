@@ -4,9 +4,10 @@
  * Refactored for modularity and better organization.
  */
 
-import { getSettings, saveSettings, getTheme, toggleTheme, getApiKeys, saveApiKeys } from '../utils/storage.js';
+import { getSettings, saveSettings, getTheme, toggleTheme, getApiKeys, saveApiKeys, syncAll } from '../utils/storage.js';
 import { toast } from '../components/Toast.js';
 import { clearImageCache, getCachedImageCount } from '../utils/imageStorage.js';
+import { supabase, signIn, signUp, signOut, getSession } from '../utils/supabase.js';
 
 const Settings = (parentElement) => {
   // Local state for rendering
@@ -14,6 +15,7 @@ const Settings = (parentElement) => {
   let currentTheme = getTheme();
   let apiKeys = getApiKeys();
   let imageCount = 0;
+  let session = null;
 
   /**
    * Main render function
@@ -29,6 +31,7 @@ const Settings = (parentElement) => {
         </div>
 
         <div class="settings-sections">
+          <div id="sync-section-root"></div>
           <div id="appearance-section-root"></div>
           <div id="reading-section-root"></div>
           <div id="data-section-root"></div>
@@ -48,7 +51,68 @@ const Settings = (parentElement) => {
     renderApi();
     renderAbout();
 
+    // Auth check
+    session = await getSession();
+    renderSync();
+
     parentElement.querySelector('#save-btn')?.addEventListener('click', handleSave);
+  };
+
+  /**
+   * Section: Cloud Sync
+   */
+  const renderSync = () => {
+    const root = parentElement.querySelector('#sync-section-root');
+    if (!root) return;
+
+    if (!supabase) {
+      root.innerHTML = `
+        <section class="settings-section card">
+          <h2 class="settings-section__title">☁️ Cloud Sync</h2>
+          <div class="setting-item">
+            <p class="text-error">Supabase credentials not found in .env. Please check the setup instructions.</p>
+          </div>
+        </section>
+      `;
+      return;
+    }
+
+    if (session) {
+      root.innerHTML = `
+        <section class="settings-section card">
+          <h2 class="settings-section__title">☁️ Cloud Sync</h2>
+          <div class="auth-status">
+            <div class="auth-status__info">
+              <span class="auth-status__badge">LOGGED IN</span>
+              <span class="auth-status__email">${session.user.email}</span>
+            </div>
+            <div class="auth-status__actions">
+              <button id="sync-now-btn" class="btn btn--secondary btn--sm">🔄 Sync Now</button>
+              <button id="logout-btn" class="btn btn--ghost btn--sm">Sign Out</button>
+            </div>
+          </div>
+        </section>
+      `;
+      root.querySelector('#logout-btn')?.addEventListener('click', handleLogout);
+      root.querySelector('#sync-now-btn')?.addEventListener('click', handleSync);
+    } else {
+      root.innerHTML = `
+        <section class="settings-section card">
+          <h2 class="settings-section__title">☁️ Cloud Sync</h2>
+          <p class="setting-item__desc mb-4">Sign in to sync your stories and progress across devices.</p>
+          <div class="auth-form">
+            <input type="email" id="auth-email" class="form-input" placeholder="Email context">
+            <input type="password" id="auth-password" class="form-input" placeholder="Password">
+            <div class="auth-form__actions">
+              <button id="login-btn" class="btn btn--primary">Sign In</button>
+              <button id="signup-btn" class="btn btn--secondary">Create Account</button>
+            </div>
+          </div>
+        </section>
+      `;
+      root.querySelector('#login-btn')?.addEventListener('click', handleLogin);
+      root.querySelector('#signup-btn')?.addEventListener('click', handleSignup);
+    }
   };
 
   /**
@@ -318,6 +382,61 @@ const Settings = (parentElement) => {
     }
   };
 
+  /**
+   * Auth Handlers
+   */
+  const handleLogin = async () => {
+    const email = parentElement.querySelector('#auth-email')?.value;
+    const password = parentElement.querySelector('#auth-password')?.value;
+    if (!email || !password) return toast.error('Please enter email and password');
+
+    toast.info('Signing in...');
+    const { data, error } = await signIn(email, password);
+    if (error) return toast.error(error.message);
+
+    session = data.session;
+    toast.success('Welcome back!');
+    renderSync();
+  };
+
+  const handleSignup = async () => {
+    const email = parentElement.querySelector('#auth-email')?.value;
+    const password = parentElement.querySelector('#auth-password')?.value;
+    if (!email || !password) return toast.error('Please enter email and password');
+
+    toast.info('Creating account...');
+    const { data, error } = await signUp(email, password);
+    if (error) return toast.error(error.message);
+
+    if (data.user && data.session) {
+      session = data.session;
+      toast.success('Account created!');
+    } else {
+      toast.info('Account created! Please check your email if confirmation is enabled.');
+    }
+    renderSync();
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    session = null;
+    toast.info('Signed out');
+    renderSync();
+  };
+
+  const handleSync = async () => {
+    toast.info('Syncing data...');
+    const success = await syncAll();
+    if (success) {
+      toast.success('Sync complete!');
+      // Update local counts
+      imageCount = await getCachedImageCount();
+      render();
+    } else {
+      toast.error('Sync failed. Please check connection.');
+    }
+  };
+
   render();
 };
 
@@ -353,6 +472,16 @@ settingsStyles.textContent = `
   .about-info { text-align: center; padding: var(--space-4); }
   .about-logo { font-size: var(--text-3xl); color: var(--color-primary); margin-bottom: var(--space-2); }
   .settings-footer { margin-top: var(--space-12); text-align: center; }
+
+  /* Auth Styles */
+  .auth-status { display: flex; justify-content: space-between; align-items: center; background: var(--color-bg-subtle); padding: var(--space-4); border-radius: var(--radius-md); }
+  .auth-status__info { display: flex; flex-direction: column; gap: 4px; }
+  .auth-status__badge { font-size: 10px; font-weight: 700; color: var(--color-success); background: var(--color-success-light); padding: 2px 6px; border-radius: var(--radius-sm); width: fit-content; }
+  .auth-status__email { font-weight: 500; font-size: var(--text-sm); }
+  .auth-status__actions { display: flex; gap: var(--space-2); }
+  .auth-form { display: flex; flex-direction: column; gap: var(--space-3); }
+  .auth-form__actions { display: flex; gap: var(--space-3); margin-top: var(--space-1); }
+  .auth-form__actions .btn { flex: 1; }
 `;
 document.head.appendChild(settingsStyles);
 

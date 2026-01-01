@@ -5,6 +5,9 @@ const STORAGE_KEYS = {
     API_KEYS: 'nihongo_api_keys'  // { google: string, pollinations: string }
 };
 
+import { supabase, getSession } from './supabase.js';
+import { toast } from '../components/Toast.js';
+
 // Theme
 export const getTheme = () => {
     return localStorage.getItem(STORAGE_KEYS.THEME) || 'light';
@@ -28,9 +31,22 @@ export const getSettings = () => {
     }
 };
 
-export const saveSettings = (settings) => {
+export const saveSettings = async (settings) => {
     const current = getSettings();
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({ ...current, ...settings }));
+    const updated = { ...current, ...settings };
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+
+    // Cloud Sync
+    const session = await getSession();
+    if (session) {
+        await supabase
+            .from('settings')
+            .upsert({
+                user_id: session.user.id,
+                preferences: updated,
+                updated_at: new Date().toISOString()
+            });
+    }
 };
 
 // API Keys
@@ -56,16 +72,36 @@ export const getStoredStories = () => {
     }
 };
 
-export const addStory = (story) => {
+export const addStory = async (story) => {
     const stories = getStoredStories();
     stories.unshift(story);
     localStorage.setItem('nihongo_stories', JSON.stringify(stories));
+
+    // Cloud Sync
+    const session = await getSession();
+    if (session) {
+        await supabase
+            .from('stories')
+            .upsert({
+                id: story.id,
+                user_id: session.user.id,
+                content: story,
+                created_at: new Date().toISOString()
+            });
+    }
 };
 
-export const deleteStory = (id) => {
+export const deleteStory = async (id) => {
     const stories = getStoredStories();
     const filtered = stories.filter(s => s.id !== id);
     localStorage.setItem('nihongo_stories', JSON.stringify(filtered));
+
+    // Cloud Sync
+    const session = await getSession();
+    if (session) {
+        await supabase.from('stories').delete().eq('id', id);
+        await supabase.from('progress').delete().eq('story_id', id);
+    }
 
     // Cleanup progress
     const allProgress = getAllProgress();
@@ -76,10 +112,25 @@ export const deleteStory = (id) => {
 };
 
 // Progress
-export const saveProgress = (storyId, data) => {
+export const saveProgress = async (storyId, data) => {
     const allProgress = getAllProgress();
-    allProgress[storyId] = { ...allProgress[storyId], ...data, lastRead: Date.now() };
+    const updated = { ...allProgress[storyId], ...data, lastRead: Date.now() };
+    allProgress[storyId] = updated;
     localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(allProgress));
+
+    // Cloud Sync
+    const session = await getSession();
+    if (session) {
+        await supabase
+            .from('progress')
+            .upsert({
+                story_id: storyId,
+                user_id: session.user.id,
+                scroll_percent: updated.scrollPercent || 0,
+                completed: updated.completed || false,
+                updated_at: new Date().toISOString()
+            });
+    }
 };
 
 export const getStoryProgress = (storyId) => {
@@ -92,5 +143,104 @@ const getAllProgress = () => {
         return JSON.parse(localStorage.getItem(STORAGE_KEYS.PROGRESS) || '{}');
     } catch {
         return {};
+    }
+};
+
+/**
+ * Full Sync from Cloud
+ */
+export const syncAll = async () => {
+    const session = await getSession();
+    if (!session) return;
+
+    try {
+        // 1. Sync Stories
+        const { data: remoteStories } = await supabase
+            .from('stories')
+            .select('*');
+
+        if (remoteStories) {
+            const localStories = getStoredStories();
+
+            // 1a. Merge Remote -> Local (stories not in local)
+            const newStories = remoteStories
+                .map(s => s.content)
+                .filter(rs => !localStories.find(ls => ls.id === rs.id));
+            if (newStories.length > 0) {
+                localStorage.setItem('nihongo_stories', JSON.stringify([...newStories, ...localStories]));
+            }
+
+            // 1b. Merge Local -> Remote (stories not in remote)
+            const missingRemote = localStories.filter(ls => !remoteStories.find(rs => rs.id === ls.id));
+            for (const story of missingRemote) {
+                await supabase.from('stories').upsert({
+                    id: story.id,
+                    user_id: session.user.id,
+                    content: story,
+                    created_at: new Date().toISOString()
+                });
+            }
+        }
+
+        // 2. Sync Progress
+        const { data: remoteProgress } = await supabase
+            .from('progress')
+            .select('*');
+
+        if (remoteProgress) {
+            const localProgress = getAllProgress();
+
+            // 2a. Remote -> Local
+            remoteProgress.forEach(rp => {
+                if (!localProgress[rp.story_id] || rp.updated_at > new Date(localProgress[rp.story_id].lastRead).toISOString()) {
+                    localProgress[rp.story_id] = {
+                        completed: rp.completed,
+                        scrollPercent: rp.scroll_percent,
+                        lastRead: new Date(rp.updated_at).getTime()
+                    };
+                }
+            });
+
+            // 2b. Local -> Remote
+            const localEntries = Object.entries(localProgress);
+            for (const [storyId, prog] of localEntries) {
+                const isRemote = remoteProgress.find(rp => rp.story_id === storyId);
+                // If not in remote OR local is newer (lastRead vs updated_at)
+                if (!isRemote || prog.lastRead > new Date(isRemote.updated_at).getTime()) {
+                    await supabase.from('progress').upsert({
+                        story_id: storyId,
+                        user_id: session.user.id,
+                        scroll_percent: prog.scrollPercent || 0,
+                        completed: prog.completed || false,
+                        updated_at: new Date(prog.lastRead || Date.now()).toISOString()
+                    });
+                }
+            }
+
+            localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(localProgress));
+        }
+
+        // 3. Sync Settings
+        const { data: remoteSettings } = await supabase
+            .from('settings')
+            .select('preferences')
+            .maybeSingle();
+
+        if (remoteSettings) {
+            localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(remoteSettings.preferences));
+        } else {
+            // No remote settings, push local settings to cloud
+            const localSettings = getSettings();
+            await supabase.from('settings').upsert({
+                user_id: session.user.id,
+                preferences: localSettings,
+                updated_at: new Date().toISOString()
+            });
+        }
+
+        return true;
+    } catch (err) {
+        console.error('Sync failed:', err);
+        return false;
     }
 };

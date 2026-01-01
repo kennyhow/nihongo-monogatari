@@ -5,6 +5,8 @@
 
 const CACHE_NAME = 'nihongo-audio-v2';
 
+import { supabase, getSession } from './supabase.js';
+
 // Track current playback state
 let currentAudio = null;
 let onFinishCallback = null;
@@ -78,6 +80,31 @@ export const playAudio = async (text, onFinish, storyId = null) => {
 
                 await currentAudio.play();
                 return;
+            }
+
+            // 2. Check Supabase Storage
+            const session = await getSession();
+            if (session) {
+                const filePath = `${session.user.id}/${storyId}/full-story.wav`;
+                const { data, error } = await supabase.storage
+                    .from('audio-cache')
+                    .download(filePath);
+
+                if (data && !error) {
+                    // Save to local cache for next time
+                    await cache.put(cacheKey, new Response(data, {
+                        headers: { 'Content-Type': 'audio/wav' }
+                    }));
+
+                    const url = URL.createObjectURL(data);
+                    currentAudio = new Audio(url);
+                    currentAudio.onended = () => {
+                        URL.revokeObjectURL(url);
+                        if (onFinishCallback) onFinishCallback();
+                    };
+                    await currentAudio.play();
+                    return;
+                }
             }
         } catch (e) {
             console.warn('Cache lookup failed:', e);
