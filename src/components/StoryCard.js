@@ -1,51 +1,97 @@
+/**
+ * StoryCard Component
+ * Displays a story preview with level badge, title, excerpt, and actions
+ */
+
+import { getStoryProgress } from '../utils/storage.js';
+
+/**
+ * Get badge class for difficulty level
+ */
+const getBadgeClass = (level) => {
+  switch (level) {
+    case 'Beginner': return 'badge--beginner';
+    case 'Intermediate': return 'badge--intermediate';
+    case 'Advanced': return 'badge--advanced';
+    default: return '';
+  }
+};
+
+/**
+ * Render a story card
+ * @param {Object} story - Story data object
+ * @returns {string} HTML string
+ */
 const StoryCard = (story) => {
-  const diffColor = {
-    'Beginner': 'bg-green-100 text-green-800',
-    'Intermediate': 'bg-yellow-100 text-yellow-800',
-    'Advanced': 'bg-red-100 text-red-800'
-  };
-
-  // Custom difficulty badge styles since we're using vanilla CSS
-  const getBadgeStyle = (level) => {
-    switch (level) {
-      case 'Beginner': return 'background-color: #d1fae5; color: #065f46;';
-      case 'Intermediate': return 'background-color: #fef3c7; color: #92400e;';
-      case 'Advanced': return 'background-color: #fee2e2; color: #991b1b;';
-      default: return 'background-color: #f3f4f6; color: #374151;';
-    }
-  };
-
   const isGenerated = String(story.id).startsWith('gen-');
+  const progress = getStoryProgress(story.id);
+  const isInProgress = progress && !progress.completed;
+  const isCompleted = progress?.completed;
 
   return `
-    <article class="card story-card" style="position: relative;">
-      <div class="story-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-        <span class="badge" style="padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; ${getBadgeStyle(story.level)}">
-          ${story.level}
-        </span>
+    <article class="card card--interactive story-card" data-story-id="${story.id}">
+      <div class="story-card__header">
+        <div class="flex gap-2 items-center">
+          <span class="badge ${getBadgeClass(story.level)}">${story.level}</span>
+          ${isGenerated ? '<span class="badge badge--ai">✨ AI</span>' : ''}
+          ${isCompleted ? '<span class="badge badge--success">✓ Read</span>' : ''}
+        </div>
         
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <span class="read-time" style="color: var(--color-text-muted); font-size: 0.875rem;">
-            ${story.readTime} min
-            </span>
-            ${isGenerated ? `
-            <button class="delete-story-btn icon-btn" data-id="${story.id}" style="color: #ef4444; margin-left: 0.5rem; position: absolute; top: 1.5rem; right: 1.5rem;" title="Delete Story">
-                🗑️
+        <div class="story-card__meta">
+          <span>📖 ${story.readTime} min</span>
+          ${isGenerated ? `
+            <button 
+              class="icon-btn delete-story-btn" 
+              data-id="${story.id}" 
+              aria-label="Delete story"
+              title="Delete story"
+            >
+              🗑️
             </button>
-            ` : ''}
+          ` : ''}
         </div>
       </div>
+
+      <h3 class="story-card__title jp-title">${story.titleJP}</h3>
+      <h4 class="story-card__subtitle">${story.titleEN}</h4>
       
-      <h3 class="jp-title" style="margin-bottom: 0.5rem; font-size: 1.5rem;">${story.titleJP}</h3>
-      <h4 class="en-title" style="margin-bottom: 1rem; font-size: 1rem; color: var(--color-text-muted); font-weight: 500;">${story.titleEN}</h4>
+      <p class="story-card__excerpt">${story.excerpt}</p>
       
-      <p class="excerpt" style="margin-bottom: 1.5rem; font-size: 0.875rem; color: var(--color-text-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-        ${story.excerpt}
-      </p>
+      ${isInProgress ? `
+        <div class="progress mb-4" style="height: 4px;">
+          <div class="progress__bar" style="width: ${progress.scrollPercent || 0}%;"></div>
+        </div>
+      ` : ''}
       
-      <a href="#/read?id=${story.id}" class="btn" style="width: 100%;">Read Story</a>
+      <a href="#/read?id=${story.id}" class="btn w-full">
+        ${isInProgress ? 'Continue Reading' : isCompleted ? 'Read Again' : 'Read Story'}
+      </a>
     </article>
   `;
 };
+
+// Add badge success style
+const cardStyles = document.createElement('style');
+cardStyles.textContent = `
+  .badge--success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+  }
+  
+  .story-card .delete-story-btn {
+    opacity: 0;
+    transition: opacity var(--duration-fast);
+  }
+  
+  .story-card:hover .delete-story-btn {
+    opacity: 1;
+  }
+  
+  .story-card .delete-story-btn:hover {
+    color: var(--color-error);
+    background: var(--color-error-light);
+  }
+`;
+document.head.appendChild(cardStyles);
 
 export default StoryCard;

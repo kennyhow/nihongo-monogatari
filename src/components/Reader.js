@@ -1,81 +1,114 @@
-import { saveProgress, getStoryProgress, getSettings } from '../utils/storage.js';
-import ProgressBar from './ProgressBar.js';
-import { playAudio, cancelAudio, preloadNextSegment } from '../utils/audio.js';
+/**
+ * Reader Component
+ * Main reading interface with audio playback and progress tracking
+ */
 
+import { saveProgress, getStoryProgress, getSettings } from '../utils/storage.js';
+import { playAudio, cancelAudio, getAudioState } from '../utils/audio.js';
+import { formatTime } from '../utils/componentBase.js';
+
+/**
+ * Create the Reader component
+ * @param {Object} options
+ * @param {Object} options.story - Story data
+ * @param {Object} options.initialProgress - Previous reading progress
+ * @param {Function} options.onComplete - Called when story is finished
+ * @returns {HTMLElement} Reader container element
+ */
 const Reader = ({ story, initialProgress, onComplete }) => {
   const settings = getSettings();
   const isSideBySide = settings.viewMode === 'side-by-side';
   const showFurigana = settings.showFurigana;
+  const fontSize = settings.fontSize === 'large' ? 'reader--large' : '';
 
   // State
   let currentProgress = initialProgress?.completed ? 100 : 0;
-  let activeSegmentIndex = -1; // -1 means none playing
+  let activeSegmentIndex = -1;
+  let isPlaying = false;
+  let playbackProgress = 0;
 
-  // HTML Generation
+  // Container element
+  const container = document.createElement('div');
+  container.className = 'reader-page';
+
+  /**
+   * Render the reader
+   */
   const render = () => {
-    const html = `
-      <div class="reader-container">
-        <div class="reader-header" style="position: sticky; top: 0; background: var(--color-bg); z-index: 10; padding: 1rem 0; border-bottom: 1px solid var(--color-border); margin-bottom: 2rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <div>
-              <h2 class="jp-title" style="margin: 0; font-size: 1.25rem;">${story.titleJP}</h2>
-              <span style="font-size: 0.875rem; color: var(--color-text-muted);">${story.titleEN}</span>
+    container.innerHTML = `
+      <div class="reader ${fontSize}">
+        <!-- Sticky Header -->
+        <div class="reader__header">
+          <div class="reader__header-content">
+            <div class="reader__title-section">
+              <a href="#/library" class="btn btn--ghost btn--sm reader__back">
+                ← Back
+              </a>
+              <div>
+                <h1 class="reader__title jp-title">${story.titleJP}</h1>
+                <p class="reader__subtitle">${story.titleEN}</p>
+              </div>
             </div>
             
-             <button id="stop-audio-btn" class="btn" style="
-               padding: 0.25rem 0.75rem; 
-               font-size: 0.875rem; 
-               background-color: transparent; 
-               color: var(--color-secondary); 
-               border: 1px solid var(--color-secondary);
-               box-shadow: none;
-             ">
-              ⏹️ Stop Audio
-            </button>
+            <div class="reader__controls">
+              <button id="settings-btn" class="icon-btn" title="Reading settings">⚙️</button>
+              ${isPlaying ? `
+                <button id="stop-btn" class="btn btn--secondary btn--sm">
+                  ⏹ Stop
+                </button>
+              ` : `
+                <button id="play-all-btn" class="btn btn--sm">
+                  ▶ Play All
+                </button>
+              `}
+            </div>
           </div>
-          ${ProgressBar({ current: currentProgress, total: 100 })}
+          
+          <!-- Reading Progress -->
+          <div class="reader__progress">
+            <div class="progress">
+              <div class="progress__bar" style="width: ${currentProgress}%"></div>
+            </div>
+            <span class="reader__progress-text">${Math.round(currentProgress)}% complete</span>
+          </div>
         </div>
 
-        <div class="story-content ${isSideBySide ? 'view-side-by-side' : 'view-stacked'}" style="
-          display: grid; 
-          grid-template-columns: ${isSideBySide ? '1fr 1fr' : '1fr'}; 
-          gap: ${isSideBySide ? '2rem' : '3rem'};
-        ">
+        <!-- Audio Player (when playing) -->
+        ${isPlaying ? `
+          <div class="audio-player">
+            <div class="audio-player__info">
+              <span class="audio-player__status">🔊 Playing segment ${activeSegmentIndex + 1}/${story.content.length}</span>
+            </div>
+            <div class="audio-player__progress">
+              <div class="audio-player__bar" style="width: ${playbackProgress}%"></div>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Story Content -->
+        <div class="reader__content ${isSideBySide ? 'reader__content--side-by-side' : ''}">
           ${story.content.map((segment, index) => `
-            <div class="segment ${index === activeSegmentIndex ? 'active-reading' : ''}" id="segment-${index}" style="margin-bottom: ${isSideBySide ? '2rem' : '0'}; opacity: ${activeSegmentIndex !== -1 && activeSegmentIndex !== index ? '0.5' : '1'}; transition: opacity 0.3s;">
-              <div class="jp-segment notification-target" style="
-                position: relative;
-                font-size: ${settings.fontSize === 'large' ? '1.5rem' : '1.25rem'}; 
-                line-height: 1.8; 
-                margin-bottom: 1rem;
-                padding: 1rem;
-                background-color: var(--color-surface);
-                border-radius: var(--radius-md);
-                box-shadow: var(--shadow-sm);
-                border: ${index === activeSegmentIndex ? '2px solid var(--color-accent)' : '2px solid transparent'};
-                cursor: pointer;
-                transition: border-color 0.2s;
-              " title="Click to listen">
-                <button class="play-hint" style="
-                  position: absolute; top: 0.5rem; right: 0.5rem; 
-                  background: none; border: none; opacity: 0.3; font-size: 1rem; cursor: pointer;
-                ">🔊</button>
-                <p class="jp-text">${(showFurigana && segment.jp_furigana) ? segment.jp_furigana : segment.jp}</p>
+            <div 
+              class="segment ${activeSegmentIndex === index ? 'segment--active' : ''} ${activeSegmentIndex !== -1 && activeSegmentIndex !== index ? 'segment--dimmed' : ''}"
+              id="segment-${index}"
+              data-index="${index}"
+            >
+              <div class="segment__jp ${activeSegmentIndex === index ? 'segment__jp--active' : ''}" title="Click to play audio">
+                <button class="segment__play-hint" aria-label="Play audio">🔊</button>
+                <p class="segment__jp-text jp-text">
+                  ${showFurigana && segment.jp_furigana ? segment.jp_furigana : segment.jp}
+                </p>
               </div>
               
-              <div class="en-segment" style="
-                font-size: 1rem; 
-                color: var(--color-text-muted);
-                padding: 0 1rem;
-                line-height: 1.6;
-              ">
+              <div class="segment__en">
                 <p>${segment.en}</p>
+                
                 ${segment.notes && segment.notes.length > 0 ? `
-                  <div class="notes" style="margin-top: 0.5rem; font-size: 0.85rem; border-top: 1px dashed var(--color-border); padding-top: 0.5rem;">
+                  <div class="segment__notes">
                     ${segment.notes.map(note => `
-                      <div style="display: flex; gap: 0.5rem; margin-bottom: 0.25rem;">
-                        <span style="font-weight: 500; color: var(--color-primary);">${note.term}:</span>
-                        <span>${note.meaning}</span>
+                      <div class="segment__note">
+                        <span class="segment__note-term">${note.term}:</span>
+                        <span class="segment__note-meaning">${note.meaning}</span>
                       </div>
                     `).join('')}
                   </div>
@@ -84,111 +117,356 @@ const Reader = ({ story, initialProgress, onComplete }) => {
             </div>
           `).join('')}
         </div>
-        
-        <div class="reader-footer" style="margin-top: 4rem; text-align: center; padding-bottom: 4rem;">
-          <button id="complete-btn" class="btn" style="padding: 1rem 3rem; font-size: 1.125rem;">
-            Finish Story
+
+        <!-- Footer Actions -->
+        <div class="reader__footer">
+          <button id="complete-btn" class="btn btn--lg">
+            ✓ Finish Story
           </button>
+        </div>
+      </div>
+
+      <!-- Settings Panel (hidden by default) -->
+      <div id="settings-panel" class="settings-panel hidden">
+        <div class="settings-panel__content">
+          <h3>Reading Settings</h3>
+          
+          <label class="form-check">
+            <input type="checkbox" id="toggle-furigana" ${showFurigana ? 'checked' : ''}>
+            Show Furigana
+          </label>
+          
+          <label class="form-check">
+            <input type="checkbox" id="toggle-side-by-side" ${isSideBySide ? 'checked' : ''}>
+            Side-by-Side View
+          </label>
+          
+          <button id="close-settings" class="btn btn--secondary btn--sm mt-4">Close</button>
         </div>
       </div>
     `;
 
-    // Check if we are re-rendering into existing element or creating new
-    if (containerElement.innerHTML === '') {
-      containerElement.innerHTML = html;
-    } else {
-      // Diffing is hard in vanilla, let's just cheat and update class names for active state
-      // This is a bit hacky but prevents full re-render flickering
-      story.content.forEach((_, idx) => {
-        const seg = containerElement.querySelector(`#segment-${idx}`);
-        const box = seg.querySelector('.jp-segment');
-        if (idx === activeSegmentIndex) {
-          seg.style.opacity = '1';
-          box.style.borderColor = 'var(--color-accent)';
-        } else {
-          seg.style.opacity = activeSegmentIndex !== -1 ? '0.5' : '1';
-          box.style.borderColor = 'transparent';
-        }
-      });
-      return;
-      // Note: the full re-render below is safer for logic simplicty if we accept flicker, 
-      // but let's try to just update container if it exists.
-      // Actually, for simplicity I'll full re-render on initial load, but for state updates I'll do DOM manipulation
-    }
-
     setupListeners();
   };
 
+  /**
+   * Setup event listeners
+   */
   const setupListeners = () => {
-    // Play Audio Listeners
+    // Segment click to play
     story.content.forEach((segment, index) => {
-      const el = containerElement.querySelector(`#segment-${index} .jp-segment`);
-      el.addEventListener('click', () => {
-        playSegment(index);
-      });
+      const el = container.querySelector(`#segment-${index} .segment__jp`);
+      el?.addEventListener('click', () => playSegment(index));
     });
 
-    // Stop Audio
-    containerElement.querySelector('#stop-audio-btn').addEventListener('click', () => {
-      cancelAudio();
-      activeSegmentIndex = -1;
-      render(); // Update UI
-    });
+    // Stop button
+    container.querySelector('#stop-btn')?.addEventListener('click', stopPlayback);
 
-    // Complete
-    containerElement.querySelector('#complete-btn').addEventListener('click', () => {
-      saveProgress(story.id, { completed: true });
+    // Play all button
+    container.querySelector('#play-all-btn')?.addEventListener('click', () => playAllFromSegment(0));
+
+    // Complete button
+    container.querySelector('#complete-btn')?.addEventListener('click', () => {
+      saveProgress(story.id, { completed: true, scrollPercent: 100 });
       cancelAudio();
       if (onComplete) onComplete();
     });
-  };
 
-  const playSegment = (index) => {
-    activeSegmentIndex = index;
-    render(); // Update UI to highlight
-
-    playAudio(story.content[index].jp, () => {
-      // On finish
-      activeSegmentIndex = -1;
-      render();
+    // Settings panel
+    container.querySelector('#settings-btn')?.addEventListener('click', () => {
+      container.querySelector('#settings-panel')?.classList.toggle('hidden');
     });
 
-    // Lazy load next segment
-    if (index + 1 < story.content.length) {
-      preloadNextSegment(story.content[index + 1].jp);
-    }
+    container.querySelector('#close-settings')?.addEventListener('click', () => {
+      container.querySelector('#settings-panel')?.classList.add('hidden');
+    });
+
+    // Settings toggles (these would normally trigger a re-render with new settings)
+    container.querySelector('#toggle-furigana')?.addEventListener('change', (e) => {
+      // Save and re-render would happen here
+      // For now just visual toggle
+      const jpTexts = container.querySelectorAll('.segment__jp-text');
+      jpTexts.forEach((el, i) => {
+        el.innerHTML = e.target.checked && story.content[i].jp_furigana
+          ? story.content[i].jp_furigana
+          : story.content[i].jp;
+      });
+    });
+
+    // Track scroll progress
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = Math.min(100, Math.round((scrollTop / docHeight) * 100));
+
+      if (scrollPercent > currentProgress) {
+        currentProgress = scrollPercent;
+        saveProgress(story.id, { scrollPercent, completed: false });
+
+        // Update progress bar
+        const progressBar = container.querySelector('.progress__bar');
+        const progressText = container.querySelector('.reader__progress-text');
+        if (progressBar) progressBar.style.width = `${currentProgress}%`;
+        if (progressText) progressText.textContent = `${Math.round(currentProgress)}% complete`;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    // Store cleanup
+    container._cleanup = () => {
+      window.removeEventListener('scroll', handleScroll);
+      cancelAudio();
+    };
   };
 
-  // Helper for mock furigana (in a real app, this would be parsed better)
-  function addFurigana(text) {
-    return text;
-  }
+  /**
+   * Play a specific segment
+   */
+  const playSegment = (index) => {
+    activeSegmentIndex = index;
+    isPlaying = true;
+    render();
 
-  // Responsive layout check
-  const mediaQuery = window.matchMedia('(max-width: 768px)');
-  const handleResize = (e) => {
-    const content = containerElement.querySelector('.story-content');
-    if (!content) return;
-    if (e.matches) {
-      content.style.gridTemplateColumns = '1fr';
-    } else if (isSideBySide) {
-      content.style.gridTemplateColumns = '1fr 1fr';
-    }
+    // Scroll segment into view
+    const segmentEl = container.querySelector(`#segment-${index}`);
+    segmentEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    playAudio(story.content[index].jp, () => {
+      // On complete
+      activeSegmentIndex = -1;
+      isPlaying = false;
+      render();
+    });
   };
 
+  /**
+   * Play all segments starting from index
+   */
+  const playAllFromSegment = async (startIndex) => {
+    for (let i = startIndex; i < story.content.length; i++) {
+      if (!isPlaying && i > startIndex) break; // Stopped
 
-  // Element creation to return
-  const containerElement = document.createElement('div');
+      activeSegmentIndex = i;
+      isPlaying = true;
+      render();
+
+      const segmentEl = container.querySelector(`#segment-${i}`);
+      segmentEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      await new Promise((resolve) => {
+        playAudio(story.content[i].jp, resolve);
+      });
+    }
+
+    activeSegmentIndex = -1;
+    isPlaying = false;
+    render();
+  };
+
+  /**
+   * Stop playback
+   */
+  const stopPlayback = () => {
+    cancelAudio();
+    activeSegmentIndex = -1;
+    isPlaying = false;
+    render();
+  };
+
+  // Initial render
   render();
 
-  mediaQuery.addListener(handleResize);
-  // Defer resize check until it's in DOM or just trust CSS initial
-  setTimeout(() => handleResize(mediaQuery), 0);
-
-  // Cleanup on unmount (manual in vanilla)
-  // We can't easily detect unmount here without a framework, but `cancelAudio` should be called by the router/page wrapper
-
-  return containerElement;
+  // Return container with cleanup
+  return container;
 };
+
+// Add reader-specific styles
+const readerStyles = document.createElement('style');
+readerStyles.textContent = `
+  .reader-page {
+    position: relative;
+  }
+
+  .reader {
+    max-width: var(--container-md);
+    margin: 0 auto;
+    padding-bottom: var(--space-20);
+  }
+  
+  .reader--large .segment__jp-text {
+    font-size: var(--text-2xl);
+  }
+
+  .reader__header {
+    position: sticky;
+    top: var(--header-height);
+    z-index: 10;
+    background: var(--color-surface-overlay);
+    backdrop-filter: blur(12px);
+    padding: var(--space-4) 0;
+    margin: 0 calc(-1 * var(--space-4));
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-6);
+  }
+  
+  .reader__header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+  
+  .reader__title-section {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+  
+  .reader__back {
+    flex-shrink: 0;
+  }
+  
+  .reader__title {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-1);
+  }
+  
+  .reader__subtitle {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+  
+  .reader__controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  
+  .reader__progress {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  
+  .reader__progress .progress {
+    flex: 1;
+  }
+  
+  .reader__progress-text {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  /* Audio Player */
+  .audio-player {
+    position: fixed;
+    bottom: var(--space-6);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-3) var(--space-5);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    min-width: 280px;
+  }
+  
+  .audio-player__info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+  }
+  
+  .audio-player__status {
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+  
+  .audio-player__progress {
+    height: 4px;
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+  
+  .audio-player__bar {
+    height: 100%;
+    background: var(--color-primary);
+    transition: width 0.1s linear;
+  }
+
+  /* Content Layout */
+  .reader__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+  
+  .reader__content--side-by-side .segment {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  
+  @media (max-width: 768px) {
+    .reader__content--side-by-side .segment {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Footer */
+  .reader__footer {
+    text-align: center;
+    margin-top: var(--space-12);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* Settings Panel */
+  .settings-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 300px;
+    max-width: 100vw;
+    background: var(--color-surface);
+    border-left: 1px solid var(--color-border);
+    box-shadow: var(--shadow-xl);
+    z-index: 200;
+    padding: var(--space-6);
+    animation: slideInRight 0.3s var(--ease-out);
+  }
+  
+  .settings-panel.hidden {
+    display: none;
+  }
+  
+  .settings-panel__content h3 {
+    margin-bottom: var(--space-6);
+  }
+  
+  .settings-panel .form-check {
+    margin-bottom: var(--space-4);
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+`;
+document.head.appendChild(readerStyles);
 
 export default Reader;

@@ -1,169 +1,216 @@
+/**
+ * Audio Queue Manager - Simplified for Whole-Story TTS
+ * 
+ * Instead of queuing individual sentences, we now queue entire stories
+ * and generate one audio file per story. This reduces API calls from
+ * ~10+ per story to just 1, avoiding rate limit issues.
+ */
 
 import { generateSpeech } from '../services/api.js';
 
-const QUEUE_STORAGE_KEY = 'nihongo_audio_queue';
-const CACHE_NAME = 'nihongo-audio-v1';
-const PROCESS_INTERVAL = 25000; // 25 seconds to be safe (limit ~3/min)
+const CACHE_NAME = 'nihongo-audio-v2';
+const STORAGE_KEY = 'nihongo_audio_queue';
 
 class AudioQueueManager {
     constructor() {
-        this.queue = this.loadQueue();
+        this.queue = [];
         this.isProcessing = false;
-        this.listeners = [];
+        this.subscribers = new Set();
 
-        // Start processing loop
-        this.processLoop();
-    }
+        // Load persisted queue
+        this.loadQueue();
 
-    loadQueue() {
-        try {
-            return JSON.parse(localStorage.getItem(QUEUE_STORAGE_KEY) || '[]');
-        } catch {
-            return [];
+        // Start processing if items exist
+        if (this.queue.length > 0) {
+            this.processQueue();
         }
     }
 
-    saveQueue() {
-        localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(this.queue));
-        this.notifyListeners();
+    /**
+     * Load queue from localStorage
+     */
+    loadQueue() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                this.queue = JSON.parse(saved);
+            }
+        } catch (e) {
+            console.warn('Failed to load audio queue:', e);
+            this.queue = [];
+        }
     }
 
-    // Add a story's segments to queue
+    /**
+     * Save queue to localStorage
+     */
+    saveQueue() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.queue));
+        } catch (e) {
+            console.warn('Failed to save audio queue:', e);
+        }
+    }
+
+    /**
+     * Notify all subscribers of queue changes
+     */
+    notify() {
+        this.subscribers.forEach(fn => {
+            try {
+                fn([...this.queue]);
+            } catch (e) {
+                console.error('Subscriber error:', e);
+            }
+        });
+    }
+
+    /**
+     * Subscribe to queue updates
+     * @param {Function} callback - Called with queue array on changes
+     * @returns {Function} Unsubscribe function
+     */
+    subscribe(callback) {
+        this.subscribers.add(callback);
+        // Immediately call with current state
+        callback([...this.queue]);
+        return () => this.subscribers.delete(callback);
+    }
+
+    /**
+     * Get current queue state
+     * @returns {Array} Copy of queue
+     */
+    getQueue() {
+        return [...this.queue];
+    }
+
+    /**
+     * Enqueue a story for TTS generation
+     * Combines all segments into one text for single API call
+     * @param {Object} story - Story object with content array
+     */
     enqueueStory(story) {
-        let addedCount = 0;
-        story.content.forEach((segment, index) => {
-            const id = `${story.id}-${index}`;
-            // Check if already in queue or (ideally) checked cache
-            // We can't check async cache easily here synchronously, but duplication in queue is handled by processing check
-            if (!this.queue.find(item => item.id === id)) {
-                this.queue.push({
-                    id,
-                    storyId: story.id,
-                    storyTitle: story.titleEN,
-                    segmentIndex: index,
-                    text: segment.jp,
-                    status: 'pending', // pending, processing, completed, error
-                    addedAt: Date.now()
-                });
-                addedCount++;
+        if (!story?.id || !story?.content?.length) {
+            console.warn('Invalid story for audio queue');
+            return;
+        }
+
+        // Check if already queued
+        if (this.queue.some(item => item.storyId === story.id)) {
+            console.log('Story already in queue:', story.id);
+            return;
+        }
+
+        // Combine all Japanese text into one
+        const fullText = story.content
+            .map(segment => segment.jp)
+            .join('\n\n');
+
+        // Add to queue
+        this.queue.push({
+            storyId: story.id,
+            storyTitle: story.titleEN || story.titleJP || 'Untitled',
+            text: fullText,
+            segmentCount: story.content.length,
+            status: 'pending',
+            addedAt: Date.now()
+        });
+
+        this.saveQueue();
+        this.notify();
+        this.processQueue();
+    }
+
+    /**
+     * Process the queue - one story at a time
+     */
+    async processQueue() {
+        if (this.isProcessing) return;
+
+        const pending = this.queue.find(item => item.status === 'pending');
+        if (!pending) return;
+
+        this.isProcessing = true;
+        pending.status = 'processing';
+        this.saveQueue();
+        this.notify();
+
+        try {
+            console.log(`Generating audio for: ${pending.storyTitle}`);
+
+            // Generate audio for entire story
+            const audioBlob = await generateSpeech(pending.text);
+
+            if (audioBlob) {
+                // Cache the audio
+                const cache = await caches.open(CACHE_NAME);
+                const cacheKey = `story-audio-${pending.storyId}`;
+                await cache.put(
+                    new Request(cacheKey),
+                    new Response(audioBlob, {
+                        headers: { 'Content-Type': 'audio/wav' }
+                    })
+                );
+
+                pending.status = 'completed';
+                console.log(`Audio cached for: ${pending.storyTitle}`);
+            } else {
+                pending.status = 'error';
+                pending.error = 'No audio data received';
+            }
+        } catch (error) {
+            console.error('Audio generation failed:', error);
+            pending.status = 'error';
+            pending.error = error.message;
+        }
+
+        this.saveQueue();
+        this.notify();
+        this.isProcessing = false;
+
+        // Process next item after delay (rate limiting)
+        const nextPending = this.queue.find(item => item.status === 'pending');
+        if (nextPending) {
+            // Wait 30 seconds between requests for rate limiting
+            setTimeout(() => this.processQueue(), 30000);
+        }
+    }
+
+    /**
+     * Clear all pending items from queue
+     */
+    clearQueue() {
+        this.queue = this.queue.filter(item => item.status === 'completed');
+        this.saveQueue();
+        this.notify();
+    }
+
+    /**
+     * Remove a specific story from queue
+     * @param {string} storyId - Story ID to remove
+     */
+    removeStory(storyId) {
+        this.queue = this.queue.filter(item => item.storyId !== storyId);
+        this.saveQueue();
+        this.notify();
+    }
+
+    /**
+     * Retry failed items
+     */
+    retryFailed() {
+        this.queue.forEach(item => {
+            if (item.status === 'error') {
+                item.status = 'pending';
+                delete item.error;
             }
         });
         this.saveQueue();
-        console.log(`Enqueued ${addedCount} segments for ${story.titleEN}`);
-    }
-
-    removeFromQueue(id) {
-        this.queue = this.queue.filter(item => item.id !== id);
-        this.saveQueue();
-    }
-
-    clearQueue() {
-        this.queue = [];
-        this.saveQueue();
-    }
-
-    // Process one item
-    async processNext() {
-        if (this.queue.length === 0) return;
-
-        // Find first pending
-        const item = this.queue.find(i => i.status === 'pending');
-        if (!item) return;
-
-        console.log(`Processing queue item: ${item.id}`);
-        item.status = 'processing';
-        this.saveQueue();
-
-        try {
-            // Check cache first to avoid API call if exists
-            const cache = await caches.open(CACHE_NAME);
-            const cacheKey = new Request(`https://tts-cache/${encodeURIComponent(item.text)}`);
-            const cachedResponse = await cache.match(cacheKey);
-
-            if (cachedResponse) {
-                console.log('Item already in cache, removing from queue');
-                this.removeFromQueue(item.id);
-                return;
-            }
-
-            // Generate
-            let blob;
-            try {
-                blob = await generateSpeech(item.text);
-            } catch (err) {
-                const errorMessage = err.toString();
-                const retryMatch = errorMessage.match(/Please retry in ([0-9.]+)s/);
-                if (retryMatch) {
-                    const waitSeconds = parseFloat(retryMatch[1]);
-                    console.warn(`TTS Rate Limit hit. Pausing queue for ${waitSeconds}s...`);
-
-                    // Wait for the requested time + small buffer
-                    await new Promise(resolve => setTimeout(resolve, (waitSeconds + 1) * 1000));
-
-                    // Reset item status to pending so it gets retried next loop
-                    item.status = 'pending';
-                    this.saveQueue();
-                    return;
-                }
-                // If not a rate limit error we recognise, throw it to be handled by outer catch
-                throw err;
-            }
-
-            if (blob) {
-                await cache.put(cacheKey, new Response(blob));
-                this.removeFromQueue(item.id);
-                console.log('Queue item processed and cached');
-            } else {
-                console.error('Failed to generate audio for queue item (Empty Blob)');
-                item.status = 'error';
-                item.errorCount = (item.errorCount || 0) + 1;
-
-                if (item.errorCount > 3) {
-                    this.removeFromQueue(item.id);
-                } else {
-                    item.status = 'pending'; // Retry next cycle
-                }
-                this.saveQueue();
-            }
-
-        } catch (error) {
-            console.error('Queue processing error', error);
-            item.status = 'error';
-            this.saveQueue();
-        }
-    }
-
-    async processLoop() {
-        if (this.isProcessing) return;
-        this.isProcessing = true;
-
-        // Endless loop with delay
-        while (true) {
-            await this.processNext();
-
-            // Notify changes (e.g. status updates)
-            this.notifyListeners();
-
-            // Wait interval
-            await new Promise(resolve => setTimeout(resolve, PROCESS_INTERVAL));
-        }
-    }
-
-    subscribe(callback) {
-        this.listeners.push(callback);
-        return () => {
-            this.listeners = this.listeners.filter(l => l !== callback);
-        };
-    }
-
-    notifyListeners() {
-        this.listeners.forEach(cb => cb(this.queue));
-    }
-
-    getQueue() {
-        return this.queue;
+        this.notify();
+        this.processQueue();
     }
 }
 
-// Singleton
+// Export singleton instance
 export const audioQueue = new AudioQueueManager();

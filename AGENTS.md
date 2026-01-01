@@ -7,25 +7,108 @@ A web application for learning Japanese through AI-generated stories with side-b
 
 ### 🛠️ Tech Stack
 - **Framework**: Vanilla JavaScript + Vite (`npm run dev`)
-- **Styling**: Vanilla CSS (`src/styles/index.css`)
+- **Styling**: Vanilla CSS Design System (`src/styles/index.css`)
 - **AI Model**: Google Gemini (`gemini-2.5-flash-lite` for text, `gemini-2.5-flash-preview-tts` for audio)
 - **Data**: LocalStorage (Persistence) + Browser Cache API (Audio)
 
-### 📂 Architecture
-- `src/services/api.js`: **CRITICAL**. Handles Gemini API calls.
-  - `generateStory`: JSON output mode. **Updated**: Requests `jp_furigana` (HTML ruby tags) and accepts custom instructions.
-  - `generateSpeech`: TTS implementation. **Note**: Returns raw PCM wrapped in WAV.
-- `src/utils/audioQueue.js`: **NEW**. Background processor for TTS to handle strict API rate limits (~3 req/min).
-  - Enqueues segments from `GeneratorModal`.
-  - Processes one segment every 25 seconds.
-  - Saves to `caches` storage.
-- `src/utils/audio.js`: Helper for playback.
-  - `playAudio`: Checks Cache first. If HIT -> Plays Blob. If MISS -> Fallback to Browser TTS (does NOT fetch API directly to reserve quota).
-- `src/pages/Queue.js`: Dashboard to monitor audio generation status.
-- `src/components/Reader.js`: The main reading interface. Renders `jp_furigana` if available.
+---
 
-### 🔑 Key Context for Agents
-1. **TTS Headers**: The Gemini TTS endpoint returns raw PCM audio (`wav` codec in expected MIME type). See `createWavHeader` in `api.js`.
-2. **Rate Limits**: `gemini-2.5-flash-preview-tts` is extremely strict. We use `AudioQueueManager` (`src/utils/audioQueue.js`) to strictly throttle requests. **Do not remove this throttling** or users will hit 429s immediately.
-3. **Environment**: `VITE_GOOGLE_API_KEY` in `.env` is required for AI features.
-4. **Persistence**: Generated stories are saved to `localStorage`. If modifying the data structure, ensure backward compatibility or handle migration in `storage.js`.
+## 📂 Architecture Overview
+
+### Design System (`src/styles/index.css`)
+**~800 lines** of organized CSS with:
+- CSS custom properties (tokens) for colors, spacing, typography, shadows
+- Full dark mode support via `[data-theme="dark"]`
+- Pre-built component classes (`.btn`, `.card`, `.badge`, `.modal`, `.toast`, etc.)
+- Animation library: shimmer, fade-in, modal slide, toast notifications
+- Responsive breakpoints (mobile-first)
+
+> ⚠️ **IMPORTANT**: Do NOT use inline styles. All styling should use CSS classes from the design system.
+
+### Component Lifecycle (`src/utils/componentBase.js`)
+Provides lightweight component utilities:
+- `createElement(html)` - Safe HTML to DOM conversion
+- `createComponent({ render, onMount, onUnmount })` - Lifecycle management
+- `useCleanup(element, fn)` - Register cleanup callbacks
+- `runCleanups(element)` - Execute all cleanups (called by router on navigation)
+
+> ⚠️ **IMPORTANT**: Always use cleanup functions for subscriptions, event listeners, and intervals to prevent memory leaks.
+
+### Router (`src/utils/router.js`)
+Enhanced hash-based router with:
+- Lazy loading of page modules
+- Automatic cleanup on route change
+- Loading states and error handling
+- `getRouteInfo()` for accessing query params
+
+---
+
+## 📁 File Reference
+
+### Services
+| File | Purpose |
+|------|---------|
+| `src/services/api.js` | **CRITICAL**. Gemini API calls for story generation and TTS |
+
+### Utilities
+| File | Purpose |
+|------|---------|
+| `src/utils/componentBase.js` | Component lifecycle hooks and helpers |
+| `src/utils/router.js` | Hash-based SPA router with cleanup |
+| `src/utils/storage.js` | LocalStorage helpers for stories, settings, progress |
+| `src/utils/audio.js` | Audio playback with cache fallback to browser TTS |
+| `src/utils/audioQueue.js` | **Whole-story TTS queue** (1 API call per story) |
+
+### Components
+| File | Purpose |
+|------|---------|
+| `src/components/Header.js` | Sticky nav, theme toggle, mobile menu, queue badge |
+| `src/components/StoryCard.js` | Story preview card with level badges |
+| `src/components/GeneratorModal.js` | AI story creation form with visual level picker |
+| `src/components/Reader.js` | Main reading interface with progress tracking |
+| `src/components/Toast.js` | Notification system (success/error/warning) |
+
+### Pages
+| File | Purpose |
+|------|---------|
+| `src/pages/Home.js` | Hero, stats, continue reading, featured stories |
+| `src/pages/Library.js` | Search, filters, sort, grid/list view |
+| `src/pages/Read.js` | Story loader with continue prompt |
+| `src/pages/Queue.js` | TTS generation progress dashboard |
+| `src/pages/Settings.js` | User preferences, import/export, cache |
+
+---
+
+## 🔑 Key Context for Agents
+
+### 1. TTS Architecture (Updated Jan 2026)
+- **Whole-story generation**: We now generate audio for entire stories in ONE API call, not per-sentence
+- This reduces API calls from ~10+ per story to just 1
+- Cached in Browser Cache API with key `story-audio-{storyId}`
+- Fallback: Browser's built-in `speechSynthesis` API if cache miss
+
+### 2. Rate Limits
+- `gemini-2.5-flash-preview-tts` is extremely strict (~3 req/min)
+- `audioQueue.js` processes one story every 30 seconds
+- **DO NOT remove throttling** or users will hit 429 errors
+
+### 3. Environment
+- `VITE_GOOGLE_API_KEY` in `.env` is required for AI features
+- API key is accessed via `import.meta.env.VITE_GOOGLE_API_KEY`
+
+### 4. Persistence
+- Stories: `localStorage.nihongo_stories` (array of story objects)
+- Progress: `localStorage.nihongo_progress` (object keyed by storyId)
+- Settings: `localStorage.nihongo_settings` (viewMode, fontSize, showFurigana)
+- Theme: `localStorage.nihongo_theme` ('light' or 'dark')
+
+### 5. Adding New Pages
+1. Create `src/pages/NewPage.js` (function that receives `parentElement`)
+2. Add route in `src/utils/router.js`
+3. Return cleanup function if using subscriptions
+4. Add nav link in `src/components/Header.js`
+
+### 6. Adding New Components
+1. Use CSS classes from design system, not inline styles
+2. Append component-specific styles via `document.head.appendChild()`
+3. Use `useCleanup()` for any subscriptions or listeners

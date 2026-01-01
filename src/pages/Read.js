@@ -1,44 +1,121 @@
-import { sampleStories } from '../data/stories.js';
+/**
+ * Read Page
+ * Wrapper page that loads story data and renders the Reader component
+ */
+
 import Reader from '../components/Reader.js';
-import { getStoryProgress, getStoredStories } from '../utils/storage.js';
+import { sampleStories } from '../data/stories.js';
+import { getStoredStories, getStoryProgress } from '../utils/storage.js';
+import { toast } from '../components/Toast.js';
+import { navigate, getRouteInfo } from '../utils/router.js';
 
 const Read = (parentElement) => {
-    // Parse Query Params to get Story ID
-    const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
-    const storyId = urlParams.get('id');
+    // Get story ID from URL
+    const { query } = getRouteInfo();
+    const storyId = query.get('id');
 
-    const allStories = [...getStoredStories(), ...sampleStories];
-    const story = allStories.find(s => s.id === storyId);
-
-    if (!story) {
+    if (!storyId) {
         parentElement.innerHTML = `
-      <div style="text-align: center; padding: 4rem;">
-        <h2>Story not found</h2>
-        <a href="#/library" class="btn" style="margin-top: 1rem;">Back to Library</a>
+      <div class="empty-state">
+        <div class="empty-state__icon">❓</div>
+        <h2 class="empty-state__title">No Story Selected</h2>
+        <p class="empty-state__description">Please select a story from the library to read.</p>
+        <a href="#/library" class="btn">📚 Go to Library</a>
       </div>
     `;
         return;
     }
 
-    const handleComplete = () => {
-        // Show completion modal or navigate
-        alert('Story Completed! おめでとう!');
-        window.location.hash = '#/library';
-    };
+    // Find story
+    const allStories = [...getStoredStories(), ...sampleStories];
+    const story = allStories.find(s => s.id === storyId);
 
+    if (!story) {
+        parentElement.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state__icon">🔍</div>
+        <h2 class="empty-state__title">Story Not Found</h2>
+        <p class="empty-state__description">The story you're looking for doesn't exist or may have been deleted.</p>
+        <a href="#/library" class="btn">📚 Go to Library</a>
+      </div>
+    `;
+        return;
+    }
+
+    // Get reading progress
     const progress = getStoryProgress(storyId);
 
-    // Clear container
-    parentElement.innerHTML = '';
+    // Show continue prompt if has progress
+    if (progress && progress.scrollPercent > 10 && !progress.completed) {
+        parentElement.innerHTML = `
+      <div class="continue-prompt">
+        <div class="continue-prompt__card card">
+          <h2>📖 Continue Reading?</h2>
+          <p class="text-muted mb-4">You were ${progress.scrollPercent}% through this story.</p>
+          <div class="flex gap-4 justify-center">
+            <button id="continue-btn" class="btn">Continue</button>
+            <button id="restart-btn" class="btn btn--secondary">Start Over</button>
+          </div>
+        </div>
+      </div>
+    `;
 
-    // Mount Reader
-    const readerElement = Reader({
-        story,
-        initialProgress: progress,
-        onComplete: handleComplete
-    });
+        parentElement.querySelector('#continue-btn')?.addEventListener('click', () => {
+            renderReader(story, progress);
+        });
 
-    parentElement.appendChild(readerElement);
+        parentElement.querySelector('#restart-btn')?.addEventListener('click', () => {
+            renderReader(story, null);
+        });
+
+        return;
+    }
+
+    // Render reader directly
+    renderReader(story, progress);
+
+    function renderReader(storyData, initialProgress) {
+        parentElement.innerHTML = '';
+
+        const reader = Reader({
+            story: storyData,
+            initialProgress,
+            onComplete: () => {
+                toast.success('🎉 Story completed!');
+                navigate('/library');
+            }
+        });
+
+        parentElement.appendChild(reader);
+
+        // Return cleanup
+        return () => {
+            if (reader._cleanup) reader._cleanup();
+        };
+    }
 };
+
+// Add continue prompt styles
+const readStyles = document.createElement('style');
+readStyles.textContent = `
+  .continue-prompt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    padding: var(--space-4);
+  }
+  
+  .continue-prompt__card {
+    text-align: center;
+    max-width: 400px;
+    padding: var(--space-8);
+  }
+  
+  .continue-prompt__card h2 {
+    margin-bottom: var(--space-2);
+  }
+`;
+document.head.appendChild(readStyles);
 
 export default Read;

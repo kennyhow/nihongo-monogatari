@@ -1,122 +1,189 @@
+/**
+ * Audio Playback Utilities
+ * Handles playing cached or fallback TTS audio
+ */
 
-import { generateSpeech } from '../services/api.js';
+const CACHE_NAME = 'nihongo-audio-v2';
 
+// Track current playback state
 let currentAudio = null;
+let onFinishCallback = null;
 
-// Audio Cache Name
-const CACHE_NAME = 'nihongo-audio-v1';
+/**
+ * Get audio state
+ * @returns {Object} Current audio state
+ */
+export const getAudioState = () => ({
+    isPlaying: currentAudio && !currentAudio.paused,
+    currentTime: currentAudio?.currentTime || 0,
+    duration: currentAudio?.duration || 0
+});
 
-export const playAudio = async (text, onEnd) => {
-    cancelAudio(); // Stop any current audio
+/**
+ * Play audio for a given text
+ * Tries cache first, falls back to browser TTS
+ * @param {string} text - Japanese text to play
+ * @param {Function} onFinish - Called when playback completes
+ * @param {string} [storyId] - Optional story ID for cached audio lookup
+ */
+export const playAudio = async (text, onFinish, storyId = null) => {
+    // Cancel any existing playback
+    cancelAudio();
 
-    try {
-        const audioBlob = await getAudioBlob(text);
+    onFinishCallback = onFinish;
 
-        if (!audioBlob) {
-            // Fallback to browser TTS if API fails/returns null
-            playBrowserAudio(text, onEnd);
-            return;
+    // Try to get cached audio for the story
+    if (storyId) {
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            const cacheKey = `story-audio-${storyId}`;
+            const cachedResponse = await cache.match(new Request(cacheKey));
+
+            if (cachedResponse) {
+                const blob = await cachedResponse.blob();
+                const url = URL.createObjectURL(blob);
+
+                currentAudio = new Audio(url);
+                currentAudio.onended = () => {
+                    URL.revokeObjectURL(url);
+                    if (onFinishCallback) onFinishCallback();
+                };
+                currentAudio.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    // Fallback to browser TTS
+                    playBrowserTTS(text, onFinish);
+                };
+
+                await currentAudio.play();
+                return;
+            }
+        } catch (e) {
+            console.warn('Cache lookup failed:', e);
         }
-
-        // Play Audio Blob
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-
-        audio.onended = () => {
-            currentAudio = null;
-            URL.revokeObjectURL(audioUrl); // Cleanup
-            if (onEnd) onEnd();
-        };
-
-        audio.onerror = (e) => {
-            console.error('Audio playback error', e);
-            currentAudio = null;
-        };
-
-        currentAudio = audio;
-        audio.play();
-
-    } catch (err) {
-        console.error('TTS Error, falling back to browser', err);
-        playBrowserAudio(text, onEnd);
     }
-};
 
-// Helper: Get Cached Audio Blob ONLY.
-// We strictly rely on the background queue to populate the cache.
-// If it's not in cache, we return null so playAudio falls back to browser.
-const getAudioBlob = async (text) => {
+    // Try segment-specific cache (legacy)
     try {
         const cache = await caches.open(CACHE_NAME);
-        const cacheKey = new Request(`https://tts-cache/${encodeURIComponent(text)}`);
-        let response = await cache.match(cacheKey);
+        const segmentKey = `segment-${hashText(text)}`;
+        const cachedResponse = await cache.match(new Request(segmentKey));
 
-        if (response) {
-            return await response.blob();
+        if (cachedResponse) {
+            const blob = await cachedResponse.blob();
+            const url = URL.createObjectURL(blob);
+
+            currentAudio = new Audio(url);
+            currentAudio.onended = () => {
+                URL.revokeObjectURL(url);
+                if (onFinishCallback) onFinishCallback();
+            };
+
+            await currentAudio.play();
+            return;
         }
-
-        // Cache Miss: Do NOT call API. Return null.
-        console.log('Audio cache miss - Falling back to browser TTS');
-        return null;
-
     } catch (e) {
-        console.error("Cache/Fetch error", e);
+        console.warn('Segment cache lookup failed:', e);
     }
-    return null;
+
+    // Fallback to browser TTS
+    playBrowserTTS(text, onFinish);
 };
 
-// New: Preload only the first few segments to save quota
-export const preloadStoryAudio = async (story) => {
-    console.log(`Starting lazy audio preload for: ${story.titleEN}`);
-    // Limit is very strict (approx 3/min), so only load the first segment.
-    // The user will likely spend >20s reading/listening to the first one.
-    if (story.content.length > 0) {
-        await getAudioBlob(story.content[0].jp);
+/**
+ * Play text using browser's built-in TTS
+ * @param {string} text - Text to speak
+ * @param {Function} onFinish - Called when complete
+ */
+const playBrowserTTS = (text, onFinish) => {
+    if (!('speechSynthesis' in window)) {
+        console.warn('Browser TTS not supported');
+        if (onFinish) onFinish();
+        return;
     }
-    // Optional: Try 2nd one after a delay if we want to risk it
-    // setTimeout(() => { if (story.content.length > 1) getAudioBlob(story.content[1].jp); }, 20000);
-};
 
-export const preloadNextSegment = async (text) => {
-    // Just a wrapper to fetch in background
-    getAudioBlob(text);
-};
+    // Cancel any existing speech
+    window.speechSynthesis.cancel();
 
-export const cancelAudio = () => {
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio = null;
-    }
-    if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-    }
-};
-
-export const isSpeaking = () => {
-    return !!currentAudio || window.speechSynthesis.speaking;
-};
-
-// --- Fallback Browser implementation ---
-
-let synth = window.speechSynthesis;
-let japaneseVoice = null;
-
-const loadVoices = () => {
-    const voices = synth.getVoices();
-    japaneseVoice = voices.find(voice => voice.lang.includes('ja')) || voices.find(voice => voice.lang.includes('JP'));
-};
-
-if (speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = loadVoices;
-}
-loadVoices();
-
-const playBrowserAudio = (text, onEnd) => {
     const utterance = new SpeechSynthesisUtterance(text);
-    if (japaneseVoice) utterance.voice = japaneseVoice;
     utterance.lang = 'ja-JP';
     utterance.rate = 0.9;
 
-    utterance.onend = onEnd;
-    synth.speak(utterance);
+    // Try to find a Japanese voice
+    const voices = window.speechSynthesis.getVoices();
+    const japaneseVoice = voices.find(v => v.lang.startsWith('ja'));
+    if (japaneseVoice) {
+        utterance.voice = japaneseVoice;
+    }
+
+    utterance.onend = () => {
+        if (onFinish) onFinish();
+    };
+
+    utterance.onerror = (e) => {
+        console.error('TTS error:', e);
+        if (onFinish) onFinish();
+    };
+
+    window.speechSynthesis.speak(utterance);
+};
+
+/**
+ * Cancel current audio playback
+ */
+export const cancelAudio = () => {
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.src = '';
+        currentAudio = null;
+    }
+
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+
+    onFinishCallback = null;
+};
+
+/**
+ * Preload audio for next segment (legacy - kept for compatibility)
+ * @param {string} text - Text to potentially preload
+ */
+export const preloadNextSegment = (text) => {
+    // This is now a no-op since we cache whole stories
+    // Kept for API compatibility
+};
+
+/**
+ * Set playback speed
+ * @param {number} rate - Playback rate (0.5 to 2.0)
+ */
+export const setPlaybackRate = (rate) => {
+    if (currentAudio) {
+        currentAudio.playbackRate = Math.max(0.5, Math.min(2.0, rate));
+    }
+};
+
+/**
+ * Seek to position in audio
+ * @param {number} time - Time in seconds
+ */
+export const seekTo = (time) => {
+    if (currentAudio && !isNaN(time)) {
+        currentAudio.currentTime = Math.max(0, Math.min(time, currentAudio.duration || 0));
+    }
+};
+
+/**
+ * Simple hash function for text
+ * @param {string} text - Text to hash
+ * @returns {string} Hash string
+ */
+const hashText = (text) => {
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+        const char = text.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
 };
