@@ -10,6 +10,24 @@ let currentAudio = null;
 let onFinishCallback = null;
 
 /**
+ * Check if high-quality audio is cached for a story
+ * @param {string} storyId 
+ * @returns {Promise<boolean>}
+ */
+export const isAudioCached = async (storyId) => {
+    if (!storyId) return false;
+    try {
+        const cache = await caches.open(CACHE_NAME);
+        const cacheKey = `/audio/story-${storyId}`;
+        const legacyKey = `story-audio-${storyId}`;
+        const match = await cache.match(cacheKey) || await cache.match(legacyKey);
+        return !!match;
+    } catch (e) {
+        return false;
+    }
+};
+
+/**
  * Get audio state
  * @returns {Object} Current audio state
  */
@@ -36,8 +54,13 @@ export const playAudio = async (text, onFinish, storyId = null) => {
     if (storyId) {
         try {
             const cache = await caches.open(CACHE_NAME);
-            const cacheKey = `story-audio-${storyId}`;
-            const cachedResponse = await cache.match(new Request(cacheKey));
+            const cacheKey = `/audio/story-${storyId}`;
+            const legacyKey = `story-audio-${storyId}`;
+            let cachedResponse = await cache.match(cacheKey);
+
+            if (!cachedResponse) {
+                cachedResponse = await cache.match(legacyKey);
+            }
 
             if (cachedResponse) {
                 const blob = await cachedResponse.blob();
@@ -50,8 +73,7 @@ export const playAudio = async (text, onFinish, storyId = null) => {
                 };
                 currentAudio.onerror = () => {
                     URL.revokeObjectURL(url);
-                    // Fallback to browser TTS
-                    playBrowserTTS(text, onFinish);
+                    if (onFinishCallback) onFinishCallback();
                 };
 
                 await currentAudio.play();
@@ -62,69 +84,8 @@ export const playAudio = async (text, onFinish, storyId = null) => {
         }
     }
 
-    // Try segment-specific cache (legacy)
-    try {
-        const cache = await caches.open(CACHE_NAME);
-        const segmentKey = `segment-${hashText(text)}`;
-        const cachedResponse = await cache.match(new Request(segmentKey));
-
-        if (cachedResponse) {
-            const blob = await cachedResponse.blob();
-            const url = URL.createObjectURL(blob);
-
-            currentAudio = new Audio(url);
-            currentAudio.onended = () => {
-                URL.revokeObjectURL(url);
-                if (onFinishCallback) onFinishCallback();
-            };
-
-            await currentAudio.play();
-            return;
-        }
-    } catch (e) {
-        console.warn('Segment cache lookup failed:', e);
-    }
-
-    // Fallback to browser TTS
-    playBrowserTTS(text, onFinish);
-};
-
-/**
- * Play text using browser's built-in TTS
- * @param {string} text - Text to speak
- * @param {Function} onFinish - Called when complete
- */
-const playBrowserTTS = (text, onFinish) => {
-    if (!('speechSynthesis' in window)) {
-        console.warn('Browser TTS not supported');
-        if (onFinish) onFinish();
-        return;
-    }
-
-    // Cancel any existing speech
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ja-JP';
-    utterance.rate = 0.9;
-
-    // Try to find a Japanese voice
-    const voices = window.speechSynthesis.getVoices();
-    const japaneseVoice = voices.find(v => v.lang.startsWith('ja'));
-    if (japaneseVoice) {
-        utterance.voice = japaneseVoice;
-    }
-
-    utterance.onend = () => {
-        if (onFinish) onFinish();
-    };
-
-    utterance.onerror = (e) => {
-        console.error('TTS error:', e);
-        if (onFinish) onFinish();
-    };
-
-    window.speechSynthesis.speak(utterance);
+    // If no storyId or not in cache, we don't play anything
+    if (onFinishCallback) onFinishCallback();
 };
 
 /**
@@ -135,10 +96,6 @@ export const cancelAudio = () => {
         currentAudio.pause();
         currentAudio.src = '';
         currentAudio = null;
-    }
-
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
     }
 
     onFinishCallback = null;
@@ -171,19 +128,4 @@ export const seekTo = (time) => {
     if (currentAudio && !isNaN(time)) {
         currentAudio.currentTime = Math.max(0, Math.min(time, currentAudio.duration || 0));
     }
-};
-
-/**
- * Simple hash function for text
- * @param {string} text - Text to hash
- * @returns {string} Hash string
- */
-const hashText = (text) => {
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-        const char = text.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash.toString(36);
 };

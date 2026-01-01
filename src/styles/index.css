@@ -944,19 +944,6 @@ footer {
   color: var(--color-primary);
 }
 
-.segment__play-hint {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  opacity: 0.3;
-  font-size: var(--text-lg);
-  transition: opacity var(--duration-fast);
-}
-
-.segment__jp:hover .segment__play-hint {
-  opacity: 0.7;
-}
-
 /* Audio Controls */
 .audio-controls {
   display: flex;

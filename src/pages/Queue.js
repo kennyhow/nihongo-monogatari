@@ -7,32 +7,32 @@ import { audioQueue } from '../utils/audioQueue.js';
 import { toast } from '../components/Toast.js';
 
 const Queue = (parentElement) => {
-    let unsubscribe = null;
+  let unsubscribe = null;
 
-    /**
-     * Render the queue page
-     */
-    const render = (queue) => {
-        // Group by story
-        const grouped = {};
-        queue.forEach(item => {
-            const title = item.storyTitle || 'Unknown Story';
-            if (!grouped[title]) grouped[title] = [];
-            grouped[title].push(item);
-        });
+  /**
+   * Render the queue page
+   */
+  const render = (queue) => {
+    // Group by story
+    const grouped = {};
+    queue.forEach(item => {
+      const title = item.storyTitle || 'Unknown Story';
+      if (!grouped[title]) grouped[title] = [];
+      grouped[title].push(item);
+    });
 
-        // Calculate stats
-        const total = queue.length;
-        const pending = queue.filter(i => i.status === 'pending').length;
-        const processing = queue.find(i => i.status === 'processing');
-        const completed = queue.filter(i => i.status === 'completed').length;
-        const errors = queue.filter(i => i.status === 'error').length;
+    // Calculate stats
+    const total = queue.length;
+    const pending = queue.filter(i => i.status === 'pending').length;
+    const processing = queue.find(i => i.status === 'processing');
+    const completed = queue.filter(i => i.status === 'completed').length;
+    const errors = queue.filter(i => i.status === 'error').length;
 
-        // Estimated time (roughly 25 seconds per segment for TTS)
-        const remainingItems = pending + (processing ? 1 : 0);
-        const estMinutes = Math.ceil((remainingItems * 25) / 60);
+    // Estimated time (roughly 25 seconds per segment for TTS)
+    const remainingItems = pending + (processing ? 1 : 0);
+    const estMinutes = Math.ceil((remainingItems * 25) / 60);
 
-        const html = `
+    const html = `
       <div class="queue-page">
         <div class="queue-header">
           <div>
@@ -66,7 +66,22 @@ const Queue = (parentElement) => {
             <div class="queue-stat__value">${completed}</div>
             <div class="queue-stat__label">Completed</div>
           </div>
+          
+          ${errors > 0 ? `
+          <div class="queue-stat queue-stat--error">
+            <div class="queue-stat__icon">⚠️</div>
+            <div class="queue-stat__value">${errors}</div>
+            <div class="queue-stat__label">Failed</div>
+          </div>
+          ` : ''}
         </div>
+        
+        ${errors > 0 ? `
+        <div class="queue-error-banner">
+          <span>⚠️ ${errors} item(s) failed due to rate limits or API errors</span>
+          <button id="retry-btn" class="btn btn--sm">🔄 Retry Failed</button>
+        </div>
+        ` : ''}
 
         ${total === 0 ? `
           <!-- Empty State -->
@@ -84,9 +99,11 @@ const Queue = (parentElement) => {
           <div class="queue-progress-section">
             <div class="flex justify-between items-center mb-4">
               <h2>Processing Progress</h2>
-              <button id="clear-queue-btn" class="btn btn--ghost btn--sm" style="color: var(--color-error);">
-                🗑️ Clear All
-              </button>
+              <div class="flex gap-2">
+                <button id="clear-queue-btn" class="btn btn--ghost btn--sm" style="color: var(--color-error);">
+                  🗑️ Clear All
+                </button>
+              </div>
             </div>
             
             <div class="progress" style="height: 12px; margin-bottom: var(--space-2);">
@@ -98,12 +115,12 @@ const Queue = (parentElement) => {
           <!-- Queue Items by Story -->
           <div class="queue-list">
             ${Object.keys(grouped).map(title => {
-            const items = grouped[title];
-            const storyCompleted = items.filter(i => i.status === 'completed').length;
-            const storyTotal = items.length;
-            const storyProgress = (storyCompleted / storyTotal) * 100;
+      const items = grouped[title];
+      const storyCompleted = items.filter(i => i.status === 'completed').length;
+      const storyTotal = items.length;
+      const storyProgress = (storyCompleted / storyTotal) * 100;
 
-            return `
+      return `
                 <div class="queue-card card">
                   <div class="queue-card__header">
                     <h3 class="queue-card__title">${title}</h3>
@@ -130,7 +147,7 @@ const Queue = (parentElement) => {
                   </div>
                 </div>
               `;
-        }).join('')}
+    }).join('')}
           </div>
         `}
 
@@ -147,35 +164,42 @@ const Queue = (parentElement) => {
       </div>
     `;
 
-        parentElement.innerHTML = html;
-        setupListeners();
-    };
+    parentElement.innerHTML = html;
+    setupListeners();
+  };
 
-    /**
-     * Setup event listeners
-     */
-    const setupListeners = () => {
-        parentElement.querySelector('#clear-queue-btn')?.addEventListener('click', () => {
-            if (confirm('Clear all pending audio generations? Completed items will remain cached.')) {
-                audioQueue.clearQueue();
-                toast.info('Queue cleared');
-                render([]);
-            }
-        });
-    };
-
-    // Subscribe to queue updates
-    unsubscribe = audioQueue.subscribe((queue) => {
-        render(queue);
+  /**
+   * Setup event listeners
+   */
+  const setupListeners = () => {
+    // Retry failed items
+    parentElement.querySelector('#retry-btn')?.addEventListener('click', () => {
+      audioQueue.retryFailed();
+      toast.info('Retrying failed items...');
     });
 
-    // Initial render
-    render(audioQueue.getQueue());
+    // Clear queue
+    parentElement.querySelector('#clear-queue-btn')?.addEventListener('click', () => {
+      if (confirm('Clear all pending audio generations? Completed items will remain cached.')) {
+        audioQueue.clearQueue();
+        toast.info('Queue cleared');
+        render([]);
+      }
+    });
+  };
 
-    // Return cleanup
-    return () => {
-        if (unsubscribe) unsubscribe();
-    };
+  // Subscribe to queue updates
+  unsubscribe = audioQueue.subscribe((queue) => {
+    render(queue);
+  });
+
+  // Initial render
+  render(audioQueue.getQueue());
+
+  // Return cleanup
+  return () => {
+    if (unsubscribe) unsubscribe();
+  };
 };
 
 // Add queue-specific styles
@@ -237,8 +261,28 @@ queueStyles.textContent = `
   .queue-stat--success .queue-stat__value {
     color: var(--color-success);
   }
-
-  /* Progress Section */
+  
+  .queue-stat--error .queue-stat__value {
+    color: var(--color-error);
+  }
+  
+  .queue-error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    background: var(--color-error-light);
+    border: 1px solid var(--color-error);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-6);
+    flex-wrap: wrap;
+  }
+  
+  .queue-error-banner span {
+    color: var(--color-error);
+    font-weight: 500;
+  }
   .queue-progress-section {
     margin-bottom: var(--space-8);
     padding: var(--space-6);

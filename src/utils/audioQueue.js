@@ -137,24 +137,24 @@ class AudioQueueManager {
         this.notify();
 
         try {
-            console.log(`Generating audio for: ${pending.storyTitle}`);
+            console.log(`Generating audio for: ${pending.storyTitle} (Segment ${pending.segmentIndex + 1})`);
 
-            // Generate audio for entire story
+            // Generate audio for this segment
             const audioBlob = await generateSpeech(pending.text);
 
             if (audioBlob) {
                 // Cache the audio
                 const cache = await caches.open(CACHE_NAME);
-                const cacheKey = `story-audio-${pending.storyId}`;
+                const cacheKey = `/audio/story-${pending.storyId}`;
                 await cache.put(
-                    new Request(cacheKey),
+                    cacheKey,
                     new Response(audioBlob, {
                         headers: { 'Content-Type': 'audio/wav' }
                     })
                 );
 
                 pending.status = 'completed';
-                console.log(`Audio cached for: ${pending.storyTitle}`);
+                console.log(`Audio cached for: ${pending.storyTitle} Seg ${pending.segmentIndex + 1}`);
             } else {
                 pending.status = 'error';
                 pending.error = 'No audio data received';

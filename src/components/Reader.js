@@ -4,7 +4,7 @@
  */
 
 import { saveProgress, getStoryProgress, getSettings } from '../utils/storage.js';
-import { playAudio, cancelAudio, getAudioState } from '../utils/audio.js';
+import { playAudio, cancelAudio, getAudioState, isAudioCached } from '../utils/audio.js';
 import { formatTime } from '../utils/componentBase.js';
 
 /**
@@ -25,6 +25,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   let currentProgress = initialProgress?.completed ? 100 : 0;
   let activeSegmentIndex = -1;
   let isPlaying = false;
+  let isHQAvailable = false;
   let playbackProgress = 0;
 
   // Container element
@@ -57,9 +58,13 @@ const Reader = ({ story, initialProgress, onComplete }) => {
                   ⏹ Stop
                 </button>
               ` : `
-                <button id="play-all-btn" class="btn btn--sm">
-                  ▶ Play All
-                </button>
+                ${isHQAvailable ? `
+                  <button id="play-hq-btn" class="btn btn--sm btn--accent" title="Play High-Quality AI Voice">
+                    ✨ Play HQ Story
+                  </button>
+                ` : `
+                  <div class="loader-sm" title="Generating high-quality audio..."></div>
+                `}
               `}
             </div>
           </div>
@@ -77,7 +82,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         ${isPlaying ? `
           <div class="audio-player">
             <div class="audio-player__info">
-              <span class="audio-player__status">🔊 Playing segment ${activeSegmentIndex + 1}/${story.content.length}</span>
+              <span class="audio-player__status">
+                ${activeSegmentIndex === -1 ? '✨ Playing High-Quality AI Voice' : `🔊 Playing segment ${activeSegmentIndex + 1}/${story.content.length}`}
+              </span>
             </div>
             <div class="audio-player__progress">
               <div class="audio-player__bar" style="width: ${playbackProgress}%"></div>
@@ -93,8 +100,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
               id="segment-${index}"
               data-index="${index}"
             >
-              <div class="segment__jp ${activeSegmentIndex === index ? 'segment__jp--active' : ''}" title="Click to play audio">
-                <button class="segment__play-hint" aria-label="Play audio">🔊</button>
+              <div class="segment__jp">
                 <p class="segment__jp-text jp-text">
                   ${showFurigana && segment.jp_furigana ? segment.jp_furigana : segment.jp}
                 </p>
@@ -153,17 +159,19 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    * Setup event listeners
    */
   const setupListeners = () => {
-    // Segment click to play
-    story.content.forEach((segment, index) => {
-      const el = container.querySelector(`#segment-${index} .segment__jp`);
-      el?.addEventListener('click', () => playSegment(index));
-    });
-
     // Stop button
     container.querySelector('#stop-btn')?.addEventListener('click', stopPlayback);
 
-    // Play all button
-    container.querySelector('#play-all-btn')?.addEventListener('click', () => playAllFromSegment(0));
+    // Play HQ button
+    container.querySelector('#play-hq-btn')?.addEventListener('click', () => {
+      activeSegmentIndex = -1; // Playing whole story, not specific segment
+      isPlaying = true;
+      render();
+      playAudio(story.content[0].jp, () => {
+        isPlaying = false;
+        render();
+      }, story.id);
+    });
 
     // Complete button
     container.querySelector('#complete-btn')?.addEventListener('click', () => {
@@ -221,50 +229,6 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   };
 
   /**
-   * Play a specific segment
-   */
-  const playSegment = (index) => {
-    activeSegmentIndex = index;
-    isPlaying = true;
-    render();
-
-    // Scroll segment into view
-    const segmentEl = container.querySelector(`#segment-${index}`);
-    segmentEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    playAudio(story.content[index].jp, () => {
-      // On complete
-      activeSegmentIndex = -1;
-      isPlaying = false;
-      render();
-    });
-  };
-
-  /**
-   * Play all segments starting from index
-   */
-  const playAllFromSegment = async (startIndex) => {
-    for (let i = startIndex; i < story.content.length; i++) {
-      if (!isPlaying && i > startIndex) break; // Stopped
-
-      activeSegmentIndex = i;
-      isPlaying = true;
-      render();
-
-      const segmentEl = container.querySelector(`#segment-${i}`);
-      segmentEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      await new Promise((resolve) => {
-        playAudio(story.content[i].jp, resolve);
-      });
-    }
-
-    activeSegmentIndex = -1;
-    isPlaying = false;
-    render();
-  };
-
-  /**
    * Stop playback
    */
   const stopPlayback = () => {
@@ -274,8 +238,11 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     render();
   };
 
-  // Initial render
-  render();
+  // Initial check for HQ audio
+  isAudioCached(story.id).then(available => {
+    isHQAvailable = available;
+    render();
+  });
 
   // Return container with cleanup
   return container;
