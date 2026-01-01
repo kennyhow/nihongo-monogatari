@@ -1,7 +1,8 @@
 const STORAGE_KEYS = {
     THEME: 'nihongo_theme',
     PROGRESS: 'nihongo_progress', // { [storyId]: { completed: boolean, scrollPos: number } }
-    SETTINGS: 'nihongo_settings'  // { fontSize: 'medium', showFurigana: true, viewMode: 'side-by-side' }
+    SETTINGS: 'nihongo_settings',  // { fontSize: 'medium', showFurigana: true, viewMode: 'side-by-side' }
+    API_KEYS: 'nihongo_api_keys'  // { google: string, pollinations: string }
 };
 
 // Theme
@@ -30,6 +31,20 @@ export const getSettings = () => {
 export const saveSettings = (settings) => {
     const current = getSettings();
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({ ...current, ...settings }));
+};
+
+// API Keys
+export const getApiKeys = () => {
+    const defaults = { google: '', pollinations: '' };
+    try {
+        return { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEYS.API_KEYS) || '{}') };
+    } catch {
+        return defaults;
+    }
+};
+
+export const saveApiKeys = (keys) => {
+    localStorage.setItem(STORAGE_KEYS.API_KEYS, JSON.stringify(keys));
 };
 
 // Stories

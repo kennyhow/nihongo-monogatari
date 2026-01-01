@@ -3,12 +3,13 @@
  * User preferences and app configuration
  */
 
-import { getSettings, saveSettings, getTheme, toggleTheme } from '../utils/storage.js';
+import { getSettings, saveSettings, getTheme, toggleTheme, getApiKeys, saveApiKeys } from '../utils/storage.js';
 import { toast } from '../components/Toast.js';
 
 const Settings = (parentElement) => {
   const currentSettings = getSettings();
   const currentTheme = getTheme();
+  const apiKeys = getApiKeys();
 
   const render = () => {
     const html = `
@@ -131,6 +132,30 @@ const Settings = (parentElement) => {
             </div>
           </section>
 
+          <!-- API Configuration -->
+          <section class="settings-section card">
+            <h2 class="settings-section__title">🔑 API Configuration</h2>
+            <p class="text-xs text-muted mb-4">
+              Your keys are stored only in your browser and never sent to our servers.
+            </p>
+            
+            <div class="setting-item flex-col items-start gap-4">
+              <div class="setting-item__info w-full">
+                <h3 class="setting-item__label">Gemini API Key</h3>
+                <p class="setting-item__desc">Required for story and speech generation</p>
+              </div>
+              <input type="password" id="geminiKey" class="form-input" placeholder="AIza..." value="${apiKeys.google}">
+            </div>
+            
+            <div class="setting-item flex-col items-start gap-4">
+              <div class="setting-item__info w-full">
+                <h3 class="setting-item__label">Pollinations API Key</h3>
+                <p class="setting-item__desc">Optional: Improves reliability for image generation</p>
+              </div>
+              <input type="password" id="pollinationsKey" class="form-input" placeholder="pk_..." value="${apiKeys.pollinations}">
+            </div>
+          </section>
+
           <!-- About -->
           <section class="settings-section card">
             <h2 class="settings-section__title">ℹ️ About</h2>
@@ -186,9 +211,13 @@ const Settings = (parentElement) => {
       const fontSize = document.getElementById('fontSize')?.value || 'medium';
       const showFurigana = document.getElementById('showFurigana')?.checked ?? true;
 
-      saveSettings({ viewMode, fontSize, showFurigana });
+      const google = document.getElementById('geminiKey')?.value || '';
+      const pollinations = document.getElementById('pollinationsKey')?.value || '';
 
-      toast.success('Preferences saved!');
+      saveSettings({ viewMode, fontSize, showFurigana });
+      saveApiKeys({ google, pollinations });
+
+      toast.success('Preferences and keys saved!');
     });
 
     // Export

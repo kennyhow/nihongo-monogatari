@@ -1,13 +1,13 @@
-
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createWavHeader, base64ToBytes } from '../utils/audioHelpers.js';
-
-// Access the API key
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+import { getApiKeys } from '../utils/storage.js';
 
 export const generateStory = async (topic, level, instructions = '') => {
+    const keys = getApiKeys();
+    const API_KEY = keys.google || import.meta.env.VITE_GOOGLE_API_KEY;
+
     if (!API_KEY) {
-        throw new Error('API Key missing. Please check your .env file.');
+        throw new Error('Google API Key missing. Please set it in Settings.');
     }
 
     const genAI = new GoogleGenerativeAI(API_KEY);
@@ -66,6 +66,9 @@ export const generateStory = async (topic, level, instructions = '') => {
 };
 
 export const generateSpeech = async (text) => {
+    const keys = getApiKeys();
+    const API_KEY = keys.google || import.meta.env.VITE_GOOGLE_API_KEY;
+
     if (!API_KEY) return null;
 
     try {

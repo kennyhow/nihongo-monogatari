@@ -3,7 +3,7 @@
  * Main reading interface with audio playback and progress tracking
  */
 
-import { saveProgress, getStoryProgress, getSettings } from '../utils/storage.js';
+import { saveProgress, getStoryProgress, getSettings, getApiKeys } from '../utils/storage.js';
 import { playAudio, cancelAudio, getAudioState, isAudioCached } from '../utils/audio.js';
 import { formatTime } from '../utils/componentBase.js';
 
@@ -280,7 +280,8 @@ const Reader = ({ story, initialProgress, onComplete }) => {
 
       // Use the Japanese text as the prompt for Pollinations
       // We add "anime style, high quality, soft colors" to keep it consistent
-      const apiKey = import.meta.env.VITE_POLLINATIONS_AI_KEY;
+      const apiKeys = getApiKeys();
+      const apiKey = apiKeys.pollinations || import.meta.env.VITE_POLLINATIONS_AI_KEY;
       const prompt = encodeURIComponent(`${segment.jp}, anime style, soft colors`);
       const imageUrl = `https://gen.pollinations.ai/image/${prompt}?model=zimage`;
 
