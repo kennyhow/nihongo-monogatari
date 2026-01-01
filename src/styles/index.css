@@ -899,6 +899,27 @@ footer {
   opacity: 0.4;
 }
 
+.segment__image-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: var(--space-4);
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.segment__image-skeleton {
+  width: 100%;
+  height: 100%;
+}
+
+.segment__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .segment__jp {
   position: relative;
   padding: var(--space-5);

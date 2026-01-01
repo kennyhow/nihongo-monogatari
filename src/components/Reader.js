@@ -19,6 +19,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   const settings = getSettings();
   const isSideBySide = settings.viewMode === 'side-by-side';
   const showFurigana = settings.showFurigana;
+  const showImages = settings.showImages !== false; // Default to true
   const fontSize = settings.fontSize === 'large' ? 'reader--large' : '';
 
   // State
@@ -100,6 +101,11 @@ const Reader = ({ story, initialProgress, onComplete }) => {
               id="segment-${index}"
               data-index="${index}"
             >
+              <!-- Image Container -->
+              <div class="segment__image-container ${!showImages ? 'hidden' : ''}" id="image-container-${index}">
+                 <div class="segment__image-skeleton skeleton"></div>
+              </div>
+
               <div class="segment__jp">
                 <p class="segment__jp-text jp-text">
                   ${showFurigana && segment.jp_furigana ? segment.jp_furigana : segment.jp}
@@ -145,6 +151,11 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           <label class="form-check">
             <input type="checkbox" id="toggle-side-by-side" ${isSideBySide ? 'checked' : ''}>
             Side-by-Side View
+          </label>
+          
+          <label class="form-check">
+            <input type="checkbox" id="toggle-images" ${showImages ? 'checked' : ''}>
+            Show Images
           </label>
           
           <button id="close-settings" class="btn btn--secondary btn--sm mt-4">Close</button>
@@ -201,6 +212,16 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       });
     });
 
+    // Toggle images
+    container.querySelector('#toggle-images')?.addEventListener('change', (e) => {
+      const isVisible = e.target.checked;
+      const containers = container.querySelectorAll('.segment__image-container');
+      containers.forEach(el => {
+        if (isVisible) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+    });
+
     // Track scroll progress
     const handleScroll = () => {
       const scrollTop = window.scrollY;
@@ -243,6 +264,54 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     isHQAvailable = available;
     render();
   });
+
+  /**
+   * Load images sequentially
+   */
+  const loadImages = async () => {
+    if (!showImages) return;
+
+    for (let i = 0; i < story.content.length; i++) {
+      const segment = story.content[i];
+      const containerId = `image-container-${i}`;
+      const imgContainer = container.querySelector(`#${containerId}`);
+
+      if (!imgContainer) continue;
+
+      // Use the Japanese text as the prompt for Pollinations
+      // We add "anime style, high quality, soft colors" to keep it consistent
+      const apiKey = import.meta.env.VITE_POLLINATIONS_AI_KEY;
+      const prompt = encodeURIComponent(`${segment.jp}, anime style, soft colors`);
+      const imageUrl = `https://gen.pollinations.ai/image/${prompt}?model=zimage`;
+
+      try {
+        const response = await fetch(imageUrl, {
+          headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
+        });
+
+        if (!response.ok) {
+          throw new Error(`Pollinations API error: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const objectURL = URL.createObjectURL(blob);
+
+        const img = new Image();
+        img.className = 'segment__image animate-fade-in';
+        img.alt = segment.en;
+        img.src = objectURL;
+
+        imgContainer.innerHTML = '';
+        imgContainer.appendChild(img);
+      } catch (error) {
+        console.error(`Failed to load image for segment ${i}:`, error);
+        imgContainer.classList.add('hidden');
+      }
+    }
+  };
+
+  // Start loading images after a small delay to prioritize text
+  setTimeout(loadImages, 500);
 
   // Return container with cleanup
   return container;
