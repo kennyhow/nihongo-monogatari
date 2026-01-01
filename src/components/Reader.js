@@ -382,46 +382,48 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     isLoadingImages = true;
 
     try {
-      for (let i = 0; i < story.content.length; i++) {
+      const loadPromises = story.content.map(async (_, i) => {
         const imgContainer = container.querySelector(`#image-container-${i}`);
-        if (!imgContainer || imgContainer.querySelector('.segment__image')) continue;
-
-        const cachedUrl = await getCachedImage(story.id, i);
-        if (cachedUrl) {
-          const img = new Image();
-          img.className = 'segment__image animate-fade-in';
-          img.src = cachedUrl;
-          imgContainer.innerHTML = '';
-          imgContainer.appendChild(img);
-          continue;
-        }
-
-        const apiKeys = getApiKeys();
-        const apiKey = apiKeys.pollinations || import.meta.env.VITE_POLLINATIONS_AI_KEY;
-        const prompt = encodeURIComponent(`${story.content[i].jp}, anime style, soft colors`);
-        const imageUrl = `https://gen.pollinations.ai/image/${prompt}?model=zimage`;
+        if (!imgContainer || imgContainer.querySelector('.segment__image')) return;
 
         try {
+          const cachedUrl = await getCachedImage(story.id, i);
+          if (cachedUrl) {
+            renderImageInto(imgContainer, cachedUrl);
+            return;
+          }
+
+          const apiKeys = getApiKeys();
+          const apiKey = apiKeys.pollinations || import.meta.env.VITE_POLLINATIONS_AI_KEY;
+          const prompt = encodeURIComponent(`${story.content[i].jp}, anime style, soft colors`);
+          const imageUrl = `https://gen.pollinations.ai/image/${prompt}?model=zimage`;
+
           const response = await fetch(imageUrl, {
             headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
           });
           if (!response.ok) throw new Error('API Error');
           const blob = await response.blob();
+
           await cacheImage(story.id, i, blob);
-          const objectURL = URL.createObjectURL(blob);
-          const img = new Image();
-          img.className = 'segment__image animate-fade-in';
-          img.src = objectURL;
-          imgContainer.innerHTML = '';
-          imgContainer.appendChild(img);
+          renderImageInto(imgContainer, URL.createObjectURL(blob));
         } catch (error) {
-          console.error('Image load failed', error);
+          console.error(`Segment ${i} image failed:`, error);
           imgContainer.classList.add('hidden');
         }
-      }
+      });
+
+      await Promise.all(loadPromises);
     } finally {
       isLoadingImages = false;
     }
+  };
+
+  const renderImageInto = (target, url) => {
+    const img = new Image();
+    img.className = 'segment__image animate-fade-in';
+    img.src = url;
+    target.innerHTML = '';
+    target.appendChild(img);
   };
 
   // Check for audio availability and start

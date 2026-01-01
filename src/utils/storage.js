@@ -172,13 +172,15 @@ export const syncAll = async () => {
 
             // 1b. Merge Local -> Remote (stories not in remote)
             const missingRemote = localStories.filter(ls => !remoteStories.find(rs => rs.id === ls.id));
-            for (const story of missingRemote) {
-                await supabase.from('stories').upsert({
-                    id: story.id,
-                    user_id: session.user.id,
-                    content: story,
-                    created_at: new Date().toISOString()
-                });
+            if (missingRemote.length > 0) {
+                await Promise.all(missingRemote.map(story =>
+                    supabase.from('stories').upsert({
+                        id: story.id,
+                        user_id: session.user.id,
+                        content: story,
+                        created_at: new Date().toISOString()
+                    })
+                ));
             }
         }
 
@@ -201,13 +203,12 @@ export const syncAll = async () => {
                 }
             });
 
-            // 2b. Local -> Remote
-            const localEntries = Object.entries(localProgress);
-            for (const [storyId, prog] of localEntries) {
+            // 2b. Local -> Remote (Parallel)
+            const pushPromises = Object.entries(localProgress).map(async ([storyId, prog]) => {
                 const isRemote = remoteProgress.find(rp => rp.story_id === storyId);
                 // If not in remote OR local is newer (lastRead vs updated_at)
                 if (!isRemote || prog.lastRead > new Date(isRemote.updated_at).getTime()) {
-                    await supabase.from('progress').upsert({
+                    return supabase.from('progress').upsert({
                         story_id: storyId,
                         user_id: session.user.id,
                         scroll_percent: prog.scrollPercent || 0,
@@ -215,7 +216,8 @@ export const syncAll = async () => {
                         updated_at: new Date(prog.lastRead || Date.now()).toISOString()
                     });
                 }
-            }
+            });
+            await Promise.all(pushPromises.filter(p => p !== undefined));
 
             localStorage.setItem(STORAGE_KEYS.PROGRESS, JSON.stringify(localProgress));
         }
