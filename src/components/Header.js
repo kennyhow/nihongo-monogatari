@@ -28,6 +28,7 @@ const Header = (parentElement) => {
             Queue
             ${queueCount > 0 ? `<span class="nav-badge">${queueCount}</span>` : ''}
           </a>
+          <a href="#/kana" class="nav-link">Kana</a>
           <a href="#/settings" class="nav-link">Settings</a>
           
           <button id="theme-toggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">
@@ -48,6 +49,7 @@ const Header = (parentElement) => {
           <a href="#/queue" class="mobile-menu__link">
             🎧 Queue ${queueCount > 0 ? `(${queueCount})` : ''}
           </a>
+          <a href="#/kana" class="mobile-menu__link">🔤 Kana Chart</a>
           <a href="#/settings" class="mobile-menu__link">⚙️ Settings</a>
         </nav>
       </div>

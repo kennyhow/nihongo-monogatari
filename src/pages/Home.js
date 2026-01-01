@@ -41,8 +41,8 @@ const Home = (parentElement) => {
             <a href="#/library" class="btn btn--lg">
               📚 Browse Library
             </a>
-            <a href="#/library" class="btn btn--lg btn--secondary">
-              ✨ Create Story
+            <a href="#/kana" class="btn btn--lg btn--secondary">
+              🔤 Kana Chart
             </a>
           </div>
         </div>
@@ -84,15 +84,17 @@ const Home = (parentElement) => {
       ` : ''}
 
       <!-- Featured Stories Section -->
-      <section class="section">
-        <div class="section__header">
-          <h2 class="section__title">⭐ Featured Stories</h2>
-          <a href="#/library" class="btn btn--ghost btn--sm">View All →</a>
-        </div>
-        <div class="story-grid">
-          ${featuredStories.map(story => StoryCard(story)).join('')}
-        </div>
-      </section>
+      ${featuredStories.length > 0 ? `
+        <section class="section">
+          <div class="section__header">
+            <h2 class="section__title">⭐ Featured Stories</h2>
+            <a href="#/library" class="btn btn--ghost btn--sm">View All →</a>
+          </div>
+          <div class="story-grid">
+            ${featuredStories.map(story => StoryCard(story)).join('')}
+          </div>
+        </section>
+      ` : ''}
 
       <!-- Call to Action -->
       <section class="cta-section">

@@ -10,7 +10,8 @@ const routes = {
     '/library': () => import('../pages/Library.js'),
     '/read': () => import('../pages/Read.js'),
     '/queue': () => import('../pages/Queue.js'),
-    '/settings': () => import('../pages/Settings.js')
+    '/settings': () => import('../pages/Settings.js'),
+    '/kana': () => import('../pages/KanaChart.js')
 };
 
 let rootElement = null;

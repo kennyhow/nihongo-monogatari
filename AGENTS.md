@@ -112,3 +112,25 @@ Enhanced hash-based router with:
 1. Use CSS classes from design system, not inline styles
 2. Append component-specific styles via `document.head.appendChild()`
 3. Use `useCleanup()` for any subscriptions or listeners
+
+---
+
+## 🚀 Future Roadmap & QoL Suggestions
+
+### 🎨 UI/UX Enhancements
+- **PWA Support**: Convert the app into a Progressive Web App so it can be "installed" on mobile phones and support offline reading for cached stories.
+- **Custom Art Styles**: Allow users to select a visual style for Pollinations images (e.g., "Studio Ghibli", "Ukiyo-e", "Cyberpunk", "Pixel Art") in Settings.
+- **Immersive Mode**: A "Zen" reading mode that hides the header and progress bars for a distraction-free experience.
+- **Micro-interactions**: Add haptic feedback (on mobile) when completing a story or clicking a vocabulary term.
+
+### 📚 Learning Features
+- **Flashcard System**: Allow users to "Star" vocabulary notes in stories and save them to a personal "Study List" with basic SRS/Flashcard functionality.
+- **Comprehension Quizzes**: Ask Gemini to generate 3-5 multiple-choice questions at the end of each story to test understanding.
+- **Interactive Dictionary**: Integrate a lightweight dictionary (like Jisho API) to allow looking up *any* word in a story, not just the AI-provided notes.
+- **Kanji Mastery Tracking**: Track which Kanji the user has encountered across different stories to calculate an "Estimated Vocabulary Size".
+
+### ⚙️ QoL Improvements
+- **Voice Selection**: Let users choose between different Gemini TTS voices (e.g., Male/Female, different personas).
+- **Export to PDF/Anki**: Add buttons to export a story as a beautifully formatted PDF or generate an Anki-compatible `.csv` for vocabulary.
+- **Story Categorization**: Add "Collections" or "Folders" to the Library to organize stories by topic (e.g., "Daily Life", "Travel", "Mythology").
+- **Auto-Read Mode**: An "Audiobook" experience that automatically scrolls and advances as the TTS plays.
