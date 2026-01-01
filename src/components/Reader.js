@@ -172,15 +172,20 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   };
 
   /**
+   * Wrap kana characters for lookup
+   */
+  const wrapKana = (text) => {
+    if (!text) return '';
+    // Wrap Hiragana (\u3040-\u309F) and Katakana (\u30A0-\u30FF)
+    return text.replace(/([\u3040-\u309F\u30A0-\u30FF])/g, '<span class="kana-lookup" data-char="$1">$1</span>');
+  };
+
+  /**
    * Update story content area
    */
   const updateContent = () => {
     const contentRoot = container.querySelector('#reader-content-root');
     if (!contentRoot) return;
-
-    // We only want to generate the segments if they don't exist yet, 
-    // or if we need to update active state.
-    // To preserve images, we update classes rather than innerHTML where possible.
 
     if (contentRoot.children.length === 0) {
       contentRoot.innerHTML = story.content.map((segment, index) => `
@@ -190,7 +195,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           </div>
           <div class="segment__jp">
             <p class="segment__jp-text jp-text">
-              ${showFurigana && segment.jp_furigana ? segment.jp_furigana : segment.jp}
+              ${wrapKana(showFurigana && segment.jp_furigana ? segment.jp_furigana : segment.jp)}
             </p>
           </div>
           <div class="segment__en">
@@ -237,9 +242,42 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       showFurigana = e.target.checked;
       const jpTexts = container.querySelectorAll('.segment__jp-text');
       jpTexts.forEach((el, i) => {
-        el.innerHTML = showFurigana && story.content[i].jp_furigana
+        el.innerHTML = wrapKana(showFurigana && story.content[i].jp_furigana
           ? story.content[i].jp_furigana
-          : story.content[i].jp;
+          : story.content[i].jp);
+      });
+    });
+
+    // Hover lookup logic
+    const contentRoot = container.querySelector('#reader-content-root');
+    contentRoot?.addEventListener('mouseover', (e) => {
+      const target = e.target.closest('.kana-lookup');
+      const panel = container.querySelector('#kana-panel');
+      if (!target || panel?.classList.contains('hidden')) return;
+
+      const char = target.dataset.char;
+      const isKatakana = /[\u30A0-\u30FF]/.test(char);
+      const system = isKatakana ? 'katakana' : 'hiragana';
+
+      // Switch system if needed
+      if (system !== kanaSystem) {
+        kanaSystem = system;
+        container.querySelectorAll('.panel-toggle-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.sys === system);
+        });
+        renderPanelKana();
+      }
+
+      // Highlight in grid
+      const cards = container.querySelectorAll('.panel-kana-card');
+      cards.forEach(card => {
+        const charEl = card.querySelector('.panel-kana-char');
+        if (charEl?.textContent === char) {
+          card.classList.add('highlight');
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          card.classList.remove('highlight');
+        }
       });
     });
 
@@ -427,11 +465,15 @@ readerStyles.textContent = `
   .kana-panel__system-toggle { display: flex; background: var(--color-bg-subtle); padding: 2px; border-radius: var(--radius-md); }
   .panel-toggle-btn { padding: var(--space-1) var(--space-3); border: none; background: none; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-sm); font-weight: 600; transition: all var(--duration-fast); }
   .panel-toggle-btn.active { background: var(--color-surface); color: var(--color-primary); box-shadow: var(--shadow-sm); }
-  .panel-kana-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; overflow-y: auto; padding-right: var(--space-2); flex: 1; }
-  .panel-kana-card { background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-2) var(--space-1); text-align: center; }
+  .panel-kana-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; overflow-y: auto; padding-right: var(--space-2); flex: 1; scroll-behavior: smooth; }
+  .panel-kana-card { background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-2) var(--space-1); text-align: center; transition: all var(--duration-fast); }
   .panel-kana-card.empty { visibility: hidden; }
+  .panel-kana-card.highlight { background: var(--color-primary-light); border-color: var(--color-primary); transform: scale(1.05); box-shadow: var(--shadow-md); z-index: 1; }
   .panel-kana-char { font-size: var(--text-lg); font-weight: 600; }
   .panel-kana-romaji { font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; }
+  
+  .kana-lookup { cursor: help; border-bottom: 1px dotted transparent; transition: all var(--duration-fast); }
+  .kana-lookup:hover { color: var(--color-primary); border-bottom-color: var(--color-primary); }
   @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
 `;
 document.head.appendChild(readerStyles);
