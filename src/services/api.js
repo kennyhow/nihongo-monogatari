@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createWavHeader, base64ToBytes } from '../utils/audioHelpers.js';
 import { getApiKeys } from '../utils/storage.js';
 
-export const generateStory = async (topic, level, instructions = '') => {
+export const generateStory = async (topic, level, instructions = '', length = 'medium') => {
     const keys = getApiKeys();
     const API_KEY = keys.google || import.meta.env.VITE_GOOGLE_API_KEY;
 
@@ -11,35 +11,61 @@ export const generateStory = async (topic, level, instructions = '') => {
     }
 
     const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite",
+        systemInstruction: "You are a professional Japanese language teacher specialized in creating curated stories for learners."
+    });
+
+    const lengthMap = {
+        'short': '5-7 sentences',
+        'medium': '10-12 sentences',
+        'long': '18-22 sentences'
+    };
+
+    const levelGuidelines = {
+        'N5': 'Use only basic grammar (desu/masu). Limit kanji to ~100 most common. Focus on daily life topics.',
+        'N4': 'Use elementary grammar (te-form, nai-form, tail-forms). Basic conjunctions. Daily routines and simple opinions.',
+        'N3': 'Natural, slightly more complex sentences. Broad topics like culture, news, and history. Use common intermediate grammar.',
+        'N2': 'Advanced vocabulary and natural expressions. Abstract topics. Complex sentence structures.',
+        'N1': 'Highly advanced/academic vocabulary. Nuanced expressions. Complex socio-cultural topics.'
+    };
 
     const prompt = `
-    Create a unique short story in Japanese for a ${level} level learner about "${topic}".
-    ${instructions ? `\nAdditional Instructions: ${instructions}\n` : ''}
+    Task: Create a unique Japanese story about "${topic}" at JLPT ${level} level.
+    
+    Parameters:
+    - Level Guide: ${levelGuidelines[level] || 'Match the specified level.'}
+    - Target Length: ${lengthMap[length] || '10 sentences'}
+    ${instructions ? `- Specific Instructions: ${instructions}` : ''}
     
     Requirements:
-    1. The story should be interesting and culturally relevant if possible.
-    2. Provide side-by-side English translations.
-    3. For each sentence/segment, provide 1-2 vocabulary notes for key terms.
-    4. "readTime" should be an estimated integer in minutes.
-    5. "level" must be exactly "${level}".
-    6. "jp_furigana" field: Provide the Japanese text with HTML <ruby> tags for Kanji readings (e.g. <ruby>猫<rt>ねこ</rt></ruby>).
-    7. Return ONLY valid JSON matching this structure:
+    1. Content: Engaging, culturally relevant, and educational.
+    2. Translations: Provide side-by-side English translations for every sentence.
+    3. Furigana: EVERY KANJI in "jp_furigana" MUST use <ruby> tags (e.g., <ruby>日本語<rt>にほんご</rt></ruby>).
+    4. Vocabulary: Include 2-3 key notes per segment.
+    5. Comprehension: Include 3 multiple-choice questions about the story.
     
+    Output Format (STRICT JSON ONLY):
     {
-      "titleJP": "Japanese Title",
-      "titleEN": "English Title",
+      "titleJP": "...",
+      "titleEN": "...",
       "level": "${level}",
       "readTime": 5,
-      "excerpt": "Short English summary...",
+      "excerpt": "A short English summary.",
       "content": [
         {
-          "jp": "Japanese sentence...",
-          "jp_furigana": "Japanese sentence with <ruby>...</ruby>",
-          "en": "English translation...",
-          "notes": [
-            { "term": "nihongo", "meaning": "Japanese language" }
-          ]
+          "jp": "Plain Japanese sentence",
+          "jp_furigana": "Japanese sentence with <ruby> tags",
+          "en": "English translation",
+          "notes": [{ "term": "...", "meaning": "..." }]
+        }
+      ],
+      "questions": [
+        {
+          "question": "Question text in English",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "answer": "Correct Option Text",
+          "explanation": "Brief explanation in English why this is correct."
         }
       ]
     }

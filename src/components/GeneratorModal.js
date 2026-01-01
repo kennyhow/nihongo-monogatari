@@ -58,33 +58,68 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
         </div>
         
         <div class="form-group">
-          <label class="form-label" for="level">Difficulty Level</label>
+          <label class="form-label" for="level">Difficulty Level (JLPT)</label>
           <div class="level-selector">
             <label class="level-option">
-              <input type="radio" name="level" value="Beginner" checked>
+              <input type="radio" name="level" value="N5" checked>
               <span class="level-option__card">
                 <span class="level-option__emoji">🌱</span>
-                <span class="level-option__name">Beginner</span>
-                <span class="level-option__desc">Simple vocab & grammar</span>
+                <span class="level-option__name">N5</span>
+                <span class="level-option__desc">Basic</span>
               </span>
             </label>
             <label class="level-option">
-              <input type="radio" name="level" value="Intermediate">
+              <input type="radio" name="level" value="N4">
               <span class="level-option__card">
                 <span class="level-option__emoji">🌿</span>
-                <span class="level-option__name">Intermediate</span>
-                <span class="level-option__desc">More complex sentences</span>
+                <span class="level-option__name">N4</span>
+                <span class="level-option__desc">Elementary</span>
               </span>
             </label>
             <label class="level-option">
-              <input type="radio" name="level" value="Advanced">
+              <input type="radio" name="level" value="N3">
               <span class="level-option__card">
                 <span class="level-option__emoji">🌳</span>
-                <span class="level-option__name">Advanced</span>
-                <span class="level-option__desc">Natural expressions</span>
+                <span class="level-option__name">N3</span>
+                <span class="level-option__desc">Intermediate</span>
+              </span>
+            </label>
+            <label class="level-option">
+              <input type="radio" name="level" value="N2">
+              <span class="level-option__card">
+                <span class="level-option__emoji">🏔️</span>
+                <span class="level-option__name">N2</span>
+                <span class="level-option__desc">Advanced</span>
+              </span>
+            </label>
+            <label class="level-option">
+              <input type="radio" name="level" value="N1">
+              <span class="level-option__card">
+                <span class="level-option__emoji">🔥</span>
+                <span class="level-option__name">N1</span>
+                <span class="level-option__desc">Fluent</span>
               </span>
             </label>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Story Length</label>
+          <div class="length-selector">
+            <label class="length-option">
+              <input type="radio" name="length" value="short" checked>
+              <span class="length-option__btn">Short</span>
+            </label>
+            <label class="length-option">
+              <input type="radio" name="length" value="medium">
+              <span class="length-option__btn">Medium</span>
+            </label>
+            <label class="length-option">
+              <input type="radio" name="length" value="long">
+              <span class="length-option__btn">Long</span>
+            </label>
+          </div>
+          <div class="form-hint">Short (~5 sentences), Medium (~12), Long (~20)</div>
         </div>
         
         <!-- Loading State -->
@@ -144,6 +179,7 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
     const topic = document.getElementById('topic').value.trim();
     const instructions = document.getElementById('instructions').value.trim();
     const level = document.querySelector('input[name="level"]:checked').value;
+    const length = document.querySelector('input[name="length"]:checked').value;
 
     if (!topic) {
       toast.error('Please enter a topic for your story');
@@ -157,10 +193,10 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
     loadingState.classList.remove('hidden');
 
     try {
-      const newStory = await generateStory(topic, level, instructions);
+      const newStory = await generateStory(topic, level, instructions, length);
 
       // Save to storage
-      addStory(newStory);
+      await addStory(newStory);
 
       // Queue for TTS generation
       try {
@@ -234,13 +270,19 @@ modalStyles.textContent = `
   /* Level Selector */
   .level-selector {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-2);
   }
   
-  @media (max-width: 500px) {
+  @media (max-width: 600px) {
     .level-selector {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 400px) {
+    .level-selector {
+      grid-template-columns: repeat(2, 1fr);
     }
   }
   
@@ -289,6 +331,44 @@ modalStyles.textContent = `
     font-size: var(--text-xs);
     color: var(--color-text-muted);
     margin-top: var(--space-1);
+    display: block;
+  }
+
+  /* Length Selector */
+  .length-selector {
+    display: flex;
+    gap: var(--space-2);
+    background: var(--color-bg-subtle);
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+  }
+
+  .length-option {
+    flex: 1;
+    cursor: pointer;
+  }
+
+  .length-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .length-option__btn {
+    display: block;
+    text-align: center;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition: all var(--duration-fast);
+  }
+
+  .length-option input:checked + .length-option__btn {
+    background: var(--color-surface);
+    color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
   }
   
   /* Loading State */

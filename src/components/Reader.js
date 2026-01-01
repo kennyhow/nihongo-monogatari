@@ -48,6 +48,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         <!-- Story Content (Managed separately) -->
         <div id="reader-content-root" class="reader__content ${isSideBySide ? 'reader__content--side-by-side' : ''}"></div>
 
+        <!-- Comprehension Check (New) -->
+        <div id="comprehension-root" class="reader__comprehension"></div>
+
         <!-- Footer Actions -->
         <div class="reader__footer">
           <button id="complete-btn" class="btn btn--lg">
@@ -94,6 +97,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
 
     updateHeader();
     updateContent();
+    updateComprehension();
     setupListeners();
     loadImages();
   };
@@ -222,6 +226,47 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         el.classList.toggle('segment--active', activeSegmentIndex === index);
         el.classList.toggle('segment--dimmed', activeSegmentIndex !== -1 && activeSegmentIndex !== index);
       }
+    });
+  };
+
+  /**
+   * Update comprehension questions section
+   */
+  const updateComprehension = () => {
+    const compRoot = container.querySelector('#comprehension-root');
+    if (!compRoot || !story.questions || story.questions.length === 0) return;
+
+    compRoot.innerHTML = `
+      <div class="comprehension">
+        <h2 class="comprehension__title">📝 Comprehension Check</h2>
+        <div class="comprehension__list">
+          ${story.questions.map((q, i) => `
+            <div class="question-card" id="question-${i}">
+              <p class="question-card__text"><strong>Q${i + 1}:</strong> ${q.question}</p>
+              <div class="question-card__options">
+                ${q.options.map(opt => `<div class="question-card__option">${opt}</div>`).join('')}
+              </div>
+              <div class="question-card__reveal">
+                <button class="reveal-btn btn btn--sm btn--secondary" data-id="${i}">Reveal Answer</button>
+                <div class="question-card__answer hidden" id="answer-${i}">
+                  <p class="answer-text"><strong>Answer:</strong> ${q.answer}</p>
+                  <p class="explanation-text">${q.explanation}</p>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    // Add listners for reveal buttons
+    compRoot.querySelectorAll('.reveal-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const answerEl = compRoot.querySelector(`#answer-${id}`);
+        answerEl?.classList.toggle('hidden');
+        btn.textContent = answerEl?.classList.contains('hidden') ? 'Reveal Answer' : 'Hide Answer';
+      });
     });
   };
 
@@ -476,7 +521,23 @@ readerStyles.textContent = `
   
   .kana-lookup { cursor: help; border-bottom: 1px dotted transparent; transition: all var(--duration-fast); }
   .kana-lookup:hover { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+  
+  /* Comprehension Styles */
+  .reader__comprehension { margin-top: var(--space-12); padding-top: var(--space-8); border-top: 1px solid var(--color-border); }
+  .comprehension__title { font-size: var(--text-2xl); margin-bottom: var(--space-6); text-align: center; }
+  .comprehension__list { display: flex; flex-direction: column; gap: var(--space-6); }
+  .question-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+  .question-card__text { margin-bottom: var(--space-4); font-size: var(--text-lg); line-height: 1.5; }
+  .question-card__options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-5); }
+  @media (max-width: 500px) { .question-card__options { grid-template-columns: 1fr; } }
+  .question-card__option { padding: var(--space-3); background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--text-sm); }
+  .question-card__reveal { border-top: 1px dashed var(--color-border); padding-top: var(--space-4); }
+  .question-card__answer { margin-top: var(--space-4); padding: var(--space-4); background: var(--color-secondary-light); border-radius: var(--radius-md); animation: fadeIn 0.3s ease-out; }
+  .answer-text { font-weight: 600; color: var(--color-primary); margin-bottom: var(--space-1); }
+  .explanation-text { font-size: var(--text-sm); color: var(--color-text-secondary); line-height: 1.4; }
+  .hidden { display: none; }
   @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 `;
 document.head.appendChild(readerStyles);
 

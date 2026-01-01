@@ -121,15 +121,20 @@ export const saveProgress = async (storyId, data) => {
     // Cloud Sync
     const session = await getSession();
     if (session) {
-        await supabase
-            .from('progress')
-            .upsert({
-                story_id: storyId,
-                user_id: session.user.id,
-                scroll_percent: updated.scrollPercent || 0,
-                completed: updated.completed || false,
-                updated_at: new Date().toISOString()
-            });
+        try {
+            await supabase
+                .from('progress')
+                .upsert({
+                    story_id: storyId,
+                    user_id: session.user.id,
+                    scroll_percent: updated.scrollPercent || 0,
+                    completed: updated.completed || false,
+                    updated_at: new Date().toISOString()
+                });
+        } catch (err) {
+            // This can happen if the story hasn't finished syncing yet
+            console.warn('Progress sync skipped (story may not be in cloud yet)');
+        }
     }
 };
 
@@ -206,6 +211,11 @@ export const syncAll = async () => {
             // 2b. Local -> Remote (Parallel)
             const pushPromises = Object.entries(localProgress).map(async ([storyId, prog]) => {
                 const isRemote = remoteProgress.find(rp => rp.story_id === storyId);
+                const storyExistsInCloud = remoteStories.find(rs => rs.id === storyId);
+
+                // If story doesn't exist in cloud, we can't sync progress yet due to FK constraint
+                if (!storyExistsInCloud) return;
+
                 // If not in remote OR local is newer (lastRead vs updated_at)
                 if (!isRemote || prog.lastRead > new Date(isRemote.updated_at).getTime()) {
                     return supabase.from('progress').upsert({
