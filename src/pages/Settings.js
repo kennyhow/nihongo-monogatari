@@ -4,16 +4,29 @@
  * Refactored for modularity and better organization.
  */
 
-import { getSettings, saveSettings, getTheme, toggleTheme, getApiKeys, saveApiKeys, syncAll, wipeAllData } from '../utils/storage.js';
+import {
+  getSettings,
+  saveSettings,
+  getTheme,
+  toggleTheme,
+  getApiKeys,
+  saveApiKeys,
+  syncAll,
+  wipeAllData,
+} from '../utils/storage.js';
 import { toast } from '../components/Toast.js';
 import { clearImageCache, getCachedImageCount } from '../utils/imageStorage.js';
 import { supabase, signIn, signUp, signOut, getSession } from '../utils/supabase.js';
+import { createEventManager } from '../utils/componentBase.js';
 
-const Settings = (parentElement) => {
+const Settings = parentElement => {
+  // Event manager
+  const events = createEventManager();
+
   // Local state for rendering
-  let currentSettings = getSettings();
+  const currentSettings = getSettings();
   let currentTheme = getTheme();
-  let apiKeys = getApiKeys();
+  const apiKeys = getApiKeys();
   let imageCount = 0;
   let session = null;
 
@@ -55,7 +68,7 @@ const Settings = (parentElement) => {
     renderApi();
     renderAbout();
 
-    parentElement.querySelector('#save-btn')?.addEventListener('click', handleSave);
+    events.on(parentElement.querySelector('#save-btn'), 'click', handleSave);
   };
 
   /**
@@ -63,7 +76,9 @@ const Settings = (parentElement) => {
    */
   const renderSync = () => {
     const root = parentElement.querySelector('#sync-section-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     if (!supabase) {
       root.innerHTML = `
@@ -93,8 +108,8 @@ const Settings = (parentElement) => {
           </div>
         </section>
       `;
-      root.querySelector('#logout-btn')?.addEventListener('click', handleLogout);
-      root.querySelector('#sync-now-btn')?.addEventListener('click', handleSync);
+      events.on(root.querySelector('#logout-btn'), 'click', handleLogout);
+      events.on(root.querySelector('#sync-now-btn'), 'click', handleSync);
     } else {
       root.innerHTML = `
         <section class="settings-section card">
@@ -110,8 +125,8 @@ const Settings = (parentElement) => {
           </div>
         </section>
       `;
-      root.querySelector('#login-btn')?.addEventListener('click', handleLogin);
-      root.querySelector('#signup-btn')?.addEventListener('click', handleSignup);
+      events.on(root.querySelector('#login-btn'), 'click', handleLogin);
+      events.on(root.querySelector('#signup-btn'), 'click', handleSignup);
     }
   };
 
@@ -120,7 +135,9 @@ const Settings = (parentElement) => {
    */
   const renderAppearance = () => {
     const root = parentElement.querySelector('#appearance-section-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     root.innerHTML = `
       <section class="settings-section card">
@@ -138,16 +155,17 @@ const Settings = (parentElement) => {
       </section>
     `;
 
-    root.querySelectorAll('.theme-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const newTheme = btn.dataset.theme;
-        if (newTheme !== currentTheme) {
-          toggleTheme();
-          currentTheme = newTheme;
-          root.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === newTheme));
-          toast.success(`Switched to ${newTheme} mode`);
-        }
-      });
+    // Use delegation for theme buttons
+    events.delegate(root, 'click', '.theme-btn', function () {
+      const newTheme = this.dataset.theme;
+      if (newTheme !== currentTheme) {
+        toggleTheme();
+        currentTheme = newTheme;
+        root
+          .querySelectorAll('.theme-btn')
+          .forEach(b => b.classList.toggle('active', b.dataset.theme === newTheme));
+        toast.success(`Switched to ${newTheme} mode`);
+      }
     });
   };
 
@@ -156,7 +174,9 @@ const Settings = (parentElement) => {
    */
   const renderReading = () => {
     const root = parentElement.querySelector('#reading-section-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     root.innerHTML = `
       <section class="settings-section card">
@@ -190,7 +210,7 @@ const Settings = (parentElement) => {
             <h3 class="setting-item__label">Text Size</h3>
             <p class="setting-item__desc">Size of Japanese text</p>
           </div>
-          <select id="fontSize" class="form-select" style="width: auto; min-width: 120px;">
+          <select id="fontSize" class="form-select form-select--auto">
             <option value="medium" ${currentSettings.fontSize === 'medium' ? 'selected' : ''}>Medium</option>
             <option value="large" ${currentSettings.fontSize === 'large' ? 'selected' : ''}>Large</option>
           </select>
@@ -215,7 +235,9 @@ const Settings = (parentElement) => {
    */
   const renderData = () => {
     const root = parentElement.querySelector('#data-section-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     root.innerHTML = `
       <section class="settings-section card">
@@ -236,16 +258,16 @@ const Settings = (parentElement) => {
           </div>
           <label class="btn btn--secondary btn--sm">
             📤 Import
-            <input type="file" id="import-input" accept=".json" style="display: none;">
+            <input type="file" id="import-input" accept=".json" class="hidden-input">
           </label>
         </div>
-        
+
         <div class="setting-item setting-item--danger">
           <div class="setting-item__info">
             <h3 class="setting-item__label">Clear Audio Cache</h3>
             <p class="setting-item__desc">Remove all cached voice files</p>
           </div>
-          <button id="clear-cache-btn" class="btn btn--ghost btn--sm" style="color: var(--color-error);">🗑️ Clear</button>
+          <button id="clear-cache-btn" class="btn btn--ghost btn--sm btn--danger">🗑️ Clear</button>
         </div>
 
         <div class="setting-item setting-item--danger">
@@ -253,26 +275,35 @@ const Settings = (parentElement) => {
             <h3 class="setting-item__label">Clear Image Cache</h3>
             <p class="setting-item__desc">Remove ${imageCount} cached images</p>
           </div>
-          <button id="clear-images-btn" class="btn btn--ghost btn--sm" style="color: var(--color-error);">🗑️ Clear</button>
+          <button id="clear-images-btn" class="btn btn--ghost btn--sm btn--danger">🗑️ Clear</button>
         </div>
 
-        ${session ? `
-        <div class="setting-item setting-item--danger" style="background: var(--color-error-light); padding: var(--space-4); border-radius: var(--radius-md); margin-top: var(--space-4);">
+        ${
+          session
+            ? `
+        <div class="setting-item setting-item--danger setting-item--critical">
           <div class="setting-item__info">
             <h3 class="setting-item__label">Wipe All Data</h3>
             <p class="setting-item__desc">Permanently delete ALL stories, progress, and cached images (local + cloud). Settings, theme, and API keys will be preserved.</p>
           </div>
-          <button id="wipe-all-btn" class="btn btn--ghost btn--sm" style="color: var(--color-error); border: 1px solid var(--color-error);">☠️ Wipe All</button>
+          <button id="wipe-all-btn" class="btn btn--ghost btn--sm btn--critical">☠️ Wipe All</button>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
       </section>
     `;
 
-    root.querySelector('#export-btn')?.addEventListener('click', handleExport);
-    root.querySelector('#import-input')?.addEventListener('change', handleImport);
-    root.querySelector('#clear-cache-btn')?.addEventListener('click', handleClearAudio);
-    root.querySelector('#clear-images-btn')?.addEventListener('click', handleClearImages);
-    root.querySelector('#wipe-all-btn')?.addEventListener('click', handleWipeAll);
+    events.on(root.querySelector('#export-btn'), 'click', handleExport);
+    events.on(root.querySelector('#import-input'), 'change', handleImport);
+    events.on(root.querySelector('#clear-cache-btn'), 'click', handleClearAudio);
+    events.on(root.querySelector('#clear-images-btn'), 'click', handleClearImages);
+
+    // wipe-all-btn is conditionally rendered (only when session exists)
+    const wipeAllBtn = root.querySelector('#wipe-all-btn');
+    if (wipeAllBtn) {
+      events.on(wipeAllBtn, 'click', handleWipeAll);
+    }
   };
 
   /**
@@ -280,7 +311,9 @@ const Settings = (parentElement) => {
    */
   const renderApi = () => {
     const root = parentElement.querySelector('#api-section-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     root.innerHTML = `
       <section class="settings-section card">
@@ -309,7 +342,9 @@ const Settings = (parentElement) => {
    */
   const renderAbout = () => {
     const root = parentElement.querySelector('#about-section-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     root.innerHTML = `
       <section class="settings-section card">
@@ -328,7 +363,8 @@ const Settings = (parentElement) => {
    * Handlers
    */
   const handleSave = () => {
-    const viewMode = parentElement.querySelector('input[name="viewMode"]:checked')?.value || 'side-by-side';
+    const viewMode =
+      parentElement.querySelector('input[name="viewMode"]:checked')?.value || 'side-by-side';
     const fontSize = parentElement.querySelector('#fontSize')?.value || 'medium';
     const showFurigana = parentElement.querySelector('#showFurigana')?.checked ?? true;
 
@@ -346,31 +382,41 @@ const Settings = (parentElement) => {
       progress: JSON.parse(localStorage.getItem('nihongo_progress') || '{}'),
       settings: currentSettings,
       theme: currentTheme,
-      exportedAt: new Date().toISOString()
+      exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `nihongo-monogatari-backup.json`;
+    a.download = 'nihongo-monogatari-backup.json';
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Backup created');
   };
 
-  const handleImport = async (e) => {
+  const handleImport = async e => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (data.stories) localStorage.setItem('nihongo_stories', JSON.stringify(data.stories));
-      if (data.progress) localStorage.setItem('nihongo_progress', JSON.stringify(data.progress));
-      if (data.settings) localStorage.setItem('nihongo_settings', JSON.stringify(data.settings));
-      if (data.theme) localStorage.setItem('nihongo_theme', data.theme);
+      if (data.stories) {
+        localStorage.setItem('nihongo_stories', JSON.stringify(data.stories));
+      }
+      if (data.progress) {
+        localStorage.setItem('nihongo_progress', JSON.stringify(data.progress));
+      }
+      if (data.settings) {
+        localStorage.setItem('nihongo_settings', JSON.stringify(data.settings));
+      }
+      if (data.theme) {
+        localStorage.setItem('nihongo_theme', data.theme);
+      }
       toast.success('Data imported! Reloading...');
       setTimeout(() => window.location.reload(), 1500);
-    } catch (err) {
+    } catch {
       toast.error('Invalid backup file');
     }
   };
@@ -396,24 +442,28 @@ const Settings = (parentElement) => {
   const handleWipeAll = async () => {
     const confirmed = confirm(
       '⚠️ DANGER ZONE ⚠️\n\n' +
-      'This will PERMANENTLY delete:\n' +
-      '• All stories (local + cloud)\n' +
-      '• All reading progress (local + cloud)\n' +
-      '• All cached images (local + cloud)\n' +
-      '• All cached audio (local)\n\n' +
-      'Your settings (theme, font size, preferences) and API keys will be preserved.\n\n' +
-      'This action CANNOT be undone. Are you sure?'
+        'This will PERMANENTLY delete:\n' +
+        '• All stories (local + cloud)\n' +
+        '• All reading progress (local + cloud)\n' +
+        '• All cached images (local + cloud)\n' +
+        '• All cached audio (local)\n\n' +
+        'Your settings (theme, font size, preferences) and API keys will be preserved.\n\n' +
+        'This action CANNOT be undone. Are you sure?'
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     const doubleConfirmed = confirm(
       'Are you REALLY sure?\n\n' +
-      'This will delete ALL your data from everywhere.\n' +
-      'Type "OK" to confirm permanent deletion.'
+        'This will delete ALL your data from everywhere.\n' +
+        'Type "OK" to confirm permanent deletion.'
     );
 
-    if (!doubleConfirmed) return;
+    if (!doubleConfirmed) {
+      return;
+    }
 
     toast.info('Wiping all data...');
     const result = await wipeAllData();
@@ -433,11 +483,15 @@ const Settings = (parentElement) => {
   const handleLogin = async () => {
     const email = parentElement.querySelector('#auth-email')?.value;
     const password = parentElement.querySelector('#auth-password')?.value;
-    if (!email || !password) return toast.error('Please enter email and password');
+    if (!email || !password) {
+      return toast.error('Please enter email and password');
+    }
 
     toast.info('Signing in...');
     const { data, error } = await signIn(email, password);
-    if (error) return toast.error(error.message);
+    if (error) {
+      return toast.error(error.message);
+    }
 
     session = data.session;
     toast.success('Welcome back!');
@@ -447,11 +501,15 @@ const Settings = (parentElement) => {
   const handleSignup = async () => {
     const email = parentElement.querySelector('#auth-email')?.value;
     const password = parentElement.querySelector('#auth-password')?.value;
-    if (!email || !password) return toast.error('Please enter email and password');
+    if (!email || !password) {
+      return toast.error('Please enter email and password');
+    }
 
     toast.info('Creating account...');
     const { data, error } = await signUp(email, password);
-    if (error) return toast.error(error.message);
+    if (error) {
+      return toast.error(error.message);
+    }
 
     if (data.user && data.session) {
       session = data.session;
@@ -483,6 +541,11 @@ const Settings = (parentElement) => {
   };
 
   render();
+
+  // Cleanup
+  return () => {
+    events.cleanup();
+  };
 };
 
 // Organized Styles
@@ -527,6 +590,20 @@ settingsStyles.textContent = `
   .auth-form { display: flex; flex-direction: column; gap: var(--space-3); }
   .auth-form__actions { display: flex; gap: var(--space-3); margin-top: var(--space-1); }
   .auth-form__actions .btn { flex: 1; }
+
+  /* Utility classes */
+  .hidden-input { display: none; }
+  .btn--danger { color: var(--color-error); }
+  .setting-item--critical {
+    background: var(--color-error-light);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    margin-top: var(--space-4);
+  }
+  .btn--critical {
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+  }
 `;
 document.head.appendChild(settingsStyles);
 

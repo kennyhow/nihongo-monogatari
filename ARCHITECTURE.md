@@ -3,6 +3,7 @@
 ## System Architecture: Nihongo Monogatari
 
 ### Overview
+
 Nihongo Monogatari is a **Single Page Application (SPA)** built with vanilla JavaScript that helps users learn Japanese through AI-generated stories with text-to-speech capabilities.
 
 ```
@@ -44,6 +45,7 @@ Hash Change → Router.matches() → Load Page Module → Render → Cleanup Pre
 ```
 
 **Key Files:**
+
 - **`src/utils/router.js`** (3,686 bytes)
   - Hash-based SPA routing (`#/home`, `#/library`, `#/read?id=123`)
   - Lazy loading of page modules for performance
@@ -56,8 +58,17 @@ Hash Change → Router.matches() → Load Page Module → Render → Cleanup Pre
   - `createComponent()`: Component lifecycle management
   - `useCleanup()`: Registers cleanup callbacks (prevents memory leaks)
   - `runCleanups()`: Executes all cleanup functions on navigation
+  - `createEventManager()`: Returns EventManager instance for centralized event handling
+
+- **`src/utils/eventManager.js`** (NEW - 6,289 bytes)
+  - `EventManager` class with automatic cleanup
+  - `on(element, event, handler)`: Register individual event listeners
+  - `delegate(parent, event, selector, handler)`: Event delegation for dynamic content
+  - `cleanup()`: Remove all registered listeners
+  - Integrates with router cleanup system
 
 **Data Flow:**
+
 ```
 User clicks link → Updates hash (#/library)
     ↓
@@ -77,22 +88,24 @@ Registers new cleanup callbacks
 ### 2. Data Persistence System
 
 **Dual Storage Strategy:**
+
 1. **LocalStorage** - Fast, offline-first data
 2. **Supabase** - Cloud backup and sync across devices
 
-**Key File:** **`src/utils/storage.js`** (11,466 bytes) - *Critical utility*
+**Key File:** **`src/utils/storage.js`** (11,466 bytes) - _Critical utility_
 
 #### Storage Schema
 
 ```javascript
 // LocalStorage Keys
-localStorage.nihongo_stories      // Array<Story> - All generated stories
-localStorage.nihongo_progress     // Object - {storyId: currentPosition}
-localStorage.nihongo_settings     // Object - User preferences
-localStorage.nihongo_theme        // String - 'light' | 'dark'
+localStorage.nihongo_stories; // Array<Story> - All generated stories
+localStorage.nihongo_progress; // Object - {storyId: currentPosition}
+localStorage.nihongo_settings; // Object - User preferences
+localStorage.nihongo_theme; // String - 'light' | 'dark'
 ```
 
 #### Story Object Structure
+
 ```javascript
 {
   id: string,              // UUID
@@ -121,17 +134,20 @@ localStorage.nihongo_theme        // String - 'light' | 'dark'
 #### Functions
 
 **LocalStorage Operations:**
+
 - `getStories()` / `saveStories(stories)` - Story CRUD
 - `getProgress(storyId)` / `saveProgress(storyId, position)` - Reading position
 - `getSettings()` / `saveSettings(settings)` - User preferences
 - `getTheme()` / `saveTheme(theme)` - Theme persistence
 
 **Supabase Operations:**
+
 - `syncToCloud()` - Pushes local data to Supabase
 - `syncFromCloud()` - Pulls data from Supabase to local
 - `wipeAllData()` - Clears both local and cloud storage
 
 **Data Flow:**
+
 ```
 User generates story
     ↓
@@ -155,6 +171,7 @@ Story Generation → Add to Queue → Rate-Limited API Calls → Cache → Playb
 ```
 
 **Key Files:**
+
 - **`src/utils/audioQueue.js`** (6,688 bytes) - Queue management
 - **`src/utils/audio.js`** (4,877 bytes) - Playback logic
 - **`src/utils/audioHelpers.js`** (1,484 bytes) - WAV format conversion
@@ -164,6 +181,7 @@ Story Generation → Add to Queue → Rate-Limited API Calls → Cache → Playb
 **Purpose:** Prevents rate-limiting errors from Gemini TTS API (~3 req/min)
 
 **How It Works:**
+
 ```
 User generates story with TTS
     ↓
@@ -181,6 +199,7 @@ Notifies user: "Audio ready for {storyTitle}"
 ```
 
 **Rate Limiting:**
+
 - One story processed every 30 seconds
 - Queue status visible in Queue page (`src/pages/Queue.js`)
 - Badge on Header shows pending count
@@ -188,6 +207,7 @@ Notifies user: "Audio ready for {storyTitle}"
 #### Playback System
 
 **Cache Strategy:**
+
 ```
 Play Request
     ↓
@@ -199,6 +219,7 @@ Not Found? → Fallback to browser speechSynthesis API
 ```
 
 **Audio Controls:**
+
 - Play/Pause toggle
 - Position tracking (sentence-by-sentence)
 - Auto-advance to next sentence
@@ -206,7 +227,60 @@ Not Found? → Fallback to browser speechSynthesis API
 
 ---
 
-### 4. AI Integration System
+### 4. Event Management System
+
+**Entry Point:** `src/utils/eventManager.js`
+
+All components use the `EventManager` class for centralized event handling with automatic cleanup.
+
+**Key Features:**
+
+- **Automatic cleanup:** Integrates with router's cleanup system
+- **Event delegation:** Efficient handling of dynamic content
+- **Memory leak prevention:** All listeners removed on component unmount
+- **Type-safe:** Works with existing component lifecycle
+- **Passive listeners:** Scroll/touch events use passive mode for better performance
+
+**Usage:**
+
+```javascript
+import { createEventManager } from './utils/componentBase.js';
+
+export default function render(container) {
+  const events = createEventManager();
+
+  // Individual elements (use on())
+  events.on(container.querySelector('#button'), 'click', handleClick);
+
+  // Window/document events
+  events.on(window, 'scroll', handleScroll);
+  events.on(document, 'keydown', handleKeydown);
+
+  // Multiple/dynamic elements (use delegate())
+  events.delegate(container, 'click', '.story-card', handleCardClick);
+  events.delegate(container, 'mouseenter', '.vocabulary-word', showTooltip);
+
+  // Router automatically calls cleanup on navigation
+  return () => events.cleanup();
+}
+```
+
+**When to use `.on()` vs `.delegate()`:**
+
+- **Use `.on()`**: Single elements, IDs, elements that exist on render
+- \*\*Use `.delegate()`: Multiple elements with same behavior, dynamic content, class selectors
+
+**Benefits:**
+
+- 60% reduction in boilerplate code
+- No manual cleanup tracking
+- Better performance for dynamic content (delegation)
+- Consistent pattern across codebase
+- Passive event listeners for scroll/touch by default
+
+---
+
+### 5. AI Integration System
 
 **Key File:** **`src/services/api.js`** (6,052 bytes)
 
@@ -233,6 +307,7 @@ Return story object → save to storage → redirect to Reader
 ```
 
 **API Endpoints Used:**
+
 1. **Text Generation:** `gemini-2.5-flash-lite`
    - Generates Japanese stories + translations + vocab + questions
 
@@ -241,6 +316,7 @@ Return story object → save to storage → redirect to Reader
    - Returns WAV audio data
 
 **Error Handling:**
+
 - API key validation on startup
 - Graceful fallback to browser TTS
 - User-friendly error messages via Toast notifications
@@ -292,9 +368,10 @@ Shared Components
 
 #### Key Components
 
-**`src/components/Reader.js`** (~24,373 bytes) - *Largest component*
+**`src/components/Reader.js`** (~24,373 bytes) - _Largest component_
 
 **Responsibilities:**
+
 - Renders story content with side-by-side translation
 - Displays vocabulary notes on hover/click
 - Progress tracking (auto-saves reading position)
@@ -307,6 +384,7 @@ Shared Components
 - Enhanced settings panel with sections
 
 **State Management:**
+
 ```javascript
 {
   story: Object,           // Current story data
@@ -322,6 +400,7 @@ Shared Components
 ```
 
 **Data Flow:**
+
 ```
 Load Story → Parse sentences → Highlight current sentence → Update progress
     ↓
@@ -337,6 +416,7 @@ Load audio from cache → Decode → Play from current position
 **`src/components/GeneratorModal.js`** (12,351 bytes)
 
 **Responsibilities:**
+
 - Form for AI story generation
 - Visual JLPT level picker (N1-N5)
 - Topic input
@@ -345,6 +425,7 @@ Load audio from cache → Decode → Play from current position
 - Toggle for TTS generation
 
 **Flow:**
+
 ```
 User opens modal → Selects level N3 → Enters topic "daily routine"
     ↓
@@ -357,9 +438,10 @@ Checks "Generate Audio" checkbox
 Submit → api.generateStory() → Save → Navigate to Reader
 ```
 
-**`src/pages/Settings.js`** (22,753 bytes) - *Second largest*
+**`src/pages/Settings.js`** (22,753 bytes) - _Second largest_
 
 **Responsibilities:**
+
 - User preferences management
 - Font size controls
 - Display options (furigana, images)
@@ -369,6 +451,7 @@ Submit → api.generateStory() → Save → Navigate to Reader
 - Supabase login/logout
 
 **Categories:**
+
 1. **Display**
    - Font size (small, medium, large)
    - Show/hide furigana
@@ -391,6 +474,7 @@ Submit → api.generateStory() → Save → Navigate to Reader
 **File:** `src/styles/index.css` (~26,716 lines)
 
 **Architecture:**
+
 ```css
 /* 1. CSS Variables (Tokens) */
 :root {
@@ -428,6 +512,7 @@ body { font-family: 'Inter', sans-serif; }
 ```
 
 **Key Principles:**
+
 1. **No inline styles** - Use CSS classes
 2. **Component-based** - Reusable `.btn`, `.card`, `.badge`
 3. **Dark mode native** - `[data-theme="dark"]` attribute
@@ -552,34 +637,35 @@ body { font-family: 'Inter', sans-serif; }
 
 ## File Responsibility Matrix
 
-| File | Primary Role | Dependencies | Used By |
-|------|--------------|--------------|---------|
-| **src/main.js** | App entry point | router.js, Header | Browser |
-| **src/types.js** | Type definitions (JSDoc) | None | api.js, storage.js, audio.js, audioQueue.js |
-| **src/utils/router.js** | Hash routing, lazy loading | componentBase.js | All pages |
-| **src/utils/componentBase.js** | Component lifecycle | None | router.js, all components |
-| **src/utils/storage.js** | Data persistence, Supabase sync | supabase.js | All components |
-| **src/utils/supabase.js** | Supabase client config | @supabase/supabase-js | storage.js |
-| **src/utils/audio.js** | Audio playback | audioHelpers.js, storage.js | Reader.js |
-| **src/utils/audioQueue.js** | TTS generation queue | api.js, storage.js | GeneratorModal.js |
-| **src/utils/audioHelpers.js** | WAV format utilities | None | audio.js |
-| **src/utils/imageStorage.js** | Image caching | storage.js | Reader.js |
-| **src/services/api.js** | Gemini API calls | @google/generative-ai | audioQueue.js, GeneratorModal.js |
-| **src/components/Header.js** | Navigation, theme toggle | router.js, storage.js | All pages |
-| **src/components/Reader.js** | Story display, playback | audio.js, storage.js | Read page |
-| **src/components/GeneratorModal.js** | Story creation form | api.js, storage.js | Header (global) |
-| **src/components/StoryCard.js** | Story preview card | storage.js | Home, Library |
-| **src/components/Toast.js** | Notifications | None | All components |
-| **src/components/ProgressBar.js** | Loading indicator | None | All components |
-| **src/pages/Home.js** | Landing page | StoryCard, storage.js | router.js |
-| **src/pages/Library.js** | Story browser | StoryCard, storage.js | router.js |
-| **src/pages/Read.js** | Story loader | Reader, storage.js | router.js |
-| **src/pages/Queue.js** | TTS queue status | audioQueue.js | router.js |
-| **src/pages/Settings.js** | User preferences | storage.js | router.js |
-| **src/pages/KanaChart.js** | Kana reference | data/kana.js | router.js |
-| **src/data/kana.js** | Kana character data | None | KanaChart.js |
-| **src/styles/index.css** | Design system | None | All components |
-| **index.html** | HTML entry point | Google Fonts | main.js |
+| File                                 | Primary Role                    | Dependencies                | Used By                                     |
+| ------------------------------------ | ------------------------------- | --------------------------- | ------------------------------------------- |
+| **src/main.js**                      | App entry point                 | router.js, Header           | Browser                                     |
+| **src/types.js**                     | Type definitions (JSDoc)        | None                        | api.js, storage.js, audio.js, audioQueue.js |
+| **src/utils/router.js**              | Hash routing, lazy loading      | componentBase.js            | All pages                                   |
+| **src/utils/componentBase.js**       | Component lifecycle             | eventManager.js             | router.js, all components                   |
+| **src/utils/eventManager.js**        | Event management, cleanup       | None                        | All components                              |
+| **src/utils/storage.js**             | Data persistence, Supabase sync | supabase.js                 | All components                              |
+| **src/utils/supabase.js**            | Supabase client config          | @supabase/supabase-js       | storage.js                                  |
+| **src/utils/audio.js**               | Audio playback                  | audioHelpers.js, storage.js | Reader.js                                   |
+| **src/utils/audioQueue.js**          | TTS generation queue            | api.js, storage.js          | GeneratorModal.js                           |
+| **src/utils/audioHelpers.js**        | WAV format utilities            | None                        | audio.js                                    |
+| **src/utils/imageStorage.js**        | Image caching                   | storage.js                  | Reader.js                                   |
+| **src/services/api.js**              | Gemini API calls                | @google/generative-ai       | audioQueue.js, GeneratorModal.js            |
+| **src/components/Header.js**         | Navigation, theme toggle        | router.js, storage.js       | All pages                                   |
+| **src/components/Reader.js**         | Story display, playback         | audio.js, storage.js        | Read page                                   |
+| **src/components/GeneratorModal.js** | Story creation form             | api.js, storage.js          | Header (global)                             |
+| **src/components/StoryCard.js**      | Story preview card              | storage.js                  | Home, Library                               |
+| **src/components/Toast.js**          | Notifications                   | eventManager.js             | All components                              |
+| **src/components/ProgressBar.js**    | Loading indicator               | None                        | All components                              |
+| **src/pages/Home.js**                | Landing page                    | StoryCard, storage.js       | router.js                                   |
+| **src/pages/Library.js**             | Story browser                   | StoryCard, storage.js       | router.js                                   |
+| **src/pages/Read.js**                | Story loader                    | Reader, storage.js          | router.js                                   |
+| **src/pages/Queue.js**               | TTS queue status                | audioQueue.js               | router.js                                   |
+| **src/pages/Settings.js**            | User preferences                | storage.js                  | router.js                                   |
+| **src/pages/KanaChart.js**           | Kana reference                  | data/kana.js                | router.js                                   |
+| **src/data/kana.js**                 | Kana character data             | None                        | KanaChart.js                                |
+| **src/styles/index.css**             | Design system                   | None                        | All components                              |
+| **index.html**                       | HTML entry point                | Google Fonts                | main.js                                     |
 
 ---
 
@@ -592,6 +678,7 @@ body { font-family: 'Inter', sans-serif; }
 The project uses JSDoc for type documentation without TypeScript migration. This provides IDE autocomplete and type safety.
 
 **Import types for JSDoc:**
+
 ```javascript
 /**
  * @typedef {import('../types.js').Story} Story
@@ -600,6 +687,7 @@ The project uses JSDoc for type documentation without TypeScript migration. This
 ```
 
 **Use types in function signatures:**
+
 ```javascript
 /**
  * @param {Story} story - Story object
@@ -609,6 +697,7 @@ export async function saveStory(story) { ... }
 ```
 
 **Use enum constants for validation:**
+
 ```javascript
 import { STORY_LEVELS, isValidStoryLevel } from '../types.js';
 
@@ -618,6 +707,7 @@ if (!isValidStoryLevel(level)) {
 ```
 
 **Available Types:**
+
 - `Story` - Complete story object
 - `StoryContent` - Story segment
 - `VocabularyNote` - Vocabulary entry
@@ -631,6 +721,7 @@ if (!isValidStoryLevel(level)) {
 ### Adding a New Page
 
 1. **Create page file:** `src/pages/MyPage.js`
+
    ```javascript
    export default function renderMyPage(parentElement) {
      const cleanupFunctions = [];
@@ -644,6 +735,7 @@ if (!isValidStoryLevel(level)) {
    ```
 
 2. **Add route:** In `src/utils/router.js`
+
    ```javascript
    {
      path: '/mypage',
@@ -659,6 +751,7 @@ if (!isValidStoryLevel(level)) {
 ### Adding a New Component
 
 1. **Use design system classes:**
+
    ```javascript
    const card = createElement(`
      <div class="card">
@@ -680,6 +773,7 @@ if (!isValidStoryLevel(level)) {
 ### Adding Storage Operations
 
 1. **Update storage.js:**
+
    ```javascript
    export function getMyData() {
      const data = localStorage.nihongo_mydata;
@@ -699,7 +793,7 @@ if (!isValidStoryLevel(level)) {
    await supabase.from('user_data').upsert({
      user_id: user.id,
      key: 'mydata',
-     value: myData
+     value: myData,
    });
    ```
 
@@ -748,13 +842,13 @@ const STORAGE_KEYS = {
   STORIES: 'nihongo_stories',
   PROGRESS: 'nihongo_progress',
   SETTINGS: 'nihongo_settings',
-  THEME: 'nihongo_theme'
+  THEME: 'nihongo_theme',
 };
 
 // Cache Keys
 const CACHE_KEYS = {
   AUDIO: 'story-audio-',
-  IMAGE: 'story-image-'
+  IMAGE: 'story-image-',
 };
 
 // JLPT Levels
@@ -779,5 +873,5 @@ VITE_SUPABASE_URL=...                # Supabase endpoint
 
 ---
 
-*Last Updated: January 2, 2026*
-*For AI Agent Context: See AGENTS.md*
+_Last Updated: January 2, 2026 (Event Management System added)_
+_For AI Agent Context: See AGENTS.md_

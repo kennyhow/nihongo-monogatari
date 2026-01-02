@@ -3,6 +3,8 @@
  * Lightweight helpers for vanilla JS components with lifecycle support
  */
 
+import { EventManager } from './eventManager.js';
+
 // Global cleanup registry - stores cleanup functions by component ID
 const cleanupRegistry = new Map();
 let componentIdCounter = 0;
@@ -12,10 +14,10 @@ let componentIdCounter = 0;
  * @param {string} html - HTML string to convert
  * @returns {HTMLElement} The created element
  */
-export const createElement = (html) => {
-    const template = document.createElement('template');
-    template.innerHTML = html.trim();
-    return template.content.firstElementChild;
+export const createElement = html => {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+  return template.content.firstElementChild;
 };
 
 /**
@@ -27,28 +29,28 @@ export const createElement = (html) => {
  * @returns {HTMLElement} The component element with lifecycle attached
  */
 export const createComponent = ({ render, onMount, onUnmount }) => {
-    const id = `component-${++componentIdCounter}`;
-    const html = render();
-    const element = createElement(html);
-    element.dataset.componentId = id;
+  const id = `component-${++componentIdCounter}`;
+  const html = render();
+  const element = createElement(html);
+  element.dataset.componentId = id;
 
-    // Store cleanup functions
-    const cleanups = [];
-    if (onUnmount) {
-        cleanups.push(onUnmount);
-    }
-    cleanupRegistry.set(id, cleanups);
+  // Store cleanup functions
+  const cleanups = [];
+  if (onUnmount) {
+    cleanups.push(onUnmount);
+  }
+  cleanupRegistry.set(id, cleanups);
 
-    // Schedule onMount for next frame (after element is in DOM)
-    if (onMount) {
-        requestAnimationFrame(() => {
-            if (document.contains(element)) {
-                onMount(element);
-            }
-        });
-    }
+  // Schedule onMount for next frame (after element is in DOM)
+  if (onMount) {
+    requestAnimationFrame(() => {
+      if (document.contains(element)) {
+        onMount(element);
+      }
+    });
+  }
 
-    return element;
+  return element;
 };
 
 /**
@@ -57,47 +59,47 @@ export const createComponent = ({ render, onMount, onUnmount }) => {
  * @param {Function} cleanupFn - Function to call on unmount
  */
 export const useCleanup = (element, cleanupFn) => {
-    const id = element.dataset?.componentId;
-    if (id && cleanupRegistry.has(id)) {
-        cleanupRegistry.get(id).push(cleanupFn);
-    }
+  const id = element.dataset?.componentId;
+  if (id && cleanupRegistry.has(id)) {
+    cleanupRegistry.get(id).push(cleanupFn);
+  }
 };
 
 /**
  * Run all cleanup functions for a component
  * @param {HTMLElement} element - Component element or container
  */
-export const runCleanups = (element) => {
-    // Find all components in this element
-    const components = element.querySelectorAll('[data-component-id]');
-    components.forEach(comp => {
-        const id = comp.dataset.componentId;
-        if (id && cleanupRegistry.has(id)) {
-            const cleanups = cleanupRegistry.get(id);
-            cleanups.forEach(fn => {
-                try {
-                    fn();
-                } catch (e) {
-                    console.error('Cleanup error:', e);
-                }
-            });
-            cleanupRegistry.delete(id);
-        }
-    });
-
-    // Also check if element itself is a component
-    const id = element.dataset?.componentId;
+export const runCleanups = element => {
+  // Find all components in this element
+  const components = element.querySelectorAll('[data-component-id]');
+  components.forEach(comp => {
+    const id = comp.dataset.componentId;
     if (id && cleanupRegistry.has(id)) {
-        const cleanups = cleanupRegistry.get(id);
-        cleanups.forEach(fn => {
-            try {
-                fn();
-            } catch (e) {
-                console.error('Cleanup error:', e);
-            }
-        });
-        cleanupRegistry.delete(id);
+      const cleanups = cleanupRegistry.get(id);
+      cleanups.forEach(fn => {
+        try {
+          fn();
+        } catch (e) {
+          console.error('Cleanup error:', e);
+        }
+      });
+      cleanupRegistry.delete(id);
     }
+  });
+
+  // Also check if element itself is a component
+  const id = element.dataset?.componentId;
+  if (id && cleanupRegistry.has(id)) {
+    const cleanups = cleanupRegistry.get(id);
+    cleanups.forEach(fn => {
+      try {
+        fn();
+      } catch (e) {
+        console.error('Cleanup error:', e);
+      }
+    });
+    cleanupRegistry.delete(id);
+  }
 };
 
 /**
@@ -105,26 +107,26 @@ export const runCleanups = (element) => {
  * @param {*} initialValue - Initial state value
  * @returns {[Function, Function]} [getter, setter] tuple
  */
-export const createState = (initialValue) => {
-    let value = initialValue;
-    const subscribers = new Set();
+export const createState = initialValue => {
+  let value = initialValue;
+  const subscribers = new Set();
 
-    const get = () => value;
+  const get = () => value;
 
-    const set = (newValue) => {
-        const nextValue = typeof newValue === 'function' ? newValue(value) : newValue;
-        if (nextValue !== value) {
-            value = nextValue;
-            subscribers.forEach(fn => fn(value));
-        }
-    };
+  const set = newValue => {
+    const nextValue = typeof newValue === 'function' ? newValue(value) : newValue;
+    if (nextValue !== value) {
+      value = nextValue;
+      subscribers.forEach(fn => fn(value));
+    }
+  };
 
-    const subscribe = (fn) => {
-        subscribers.add(fn);
-        return () => subscribers.delete(fn);
-    };
+  const subscribe = fn => {
+    subscribers.add(fn);
+    return () => subscribers.delete(fn);
+  };
 
-    return { get, set, subscribe };
+  return { get, set, subscribe };
 };
 
 /**
@@ -134,11 +136,11 @@ export const createState = (initialValue) => {
  * @returns {Function} Debounced function
  */
 export const debounce = (fn, delay = 300) => {
-    let timeoutId;
-    return (...args) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => fn(...args), delay);
-    };
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
 };
 
 /**
@@ -146,8 +148,32 @@ export const debounce = (fn, delay = 300) => {
  * @param {number} seconds - Total seconds
  * @returns {string} Formatted time string (e.g., "2:45")
  */
-export const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+export const formatTime = seconds => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+/**
+ * Create an EventManager for component lifecycle
+ *
+ * EventManager provides centralized event handling with automatic cleanup.
+ * Use this in components to manage event listeners efficiently.
+ *
+ * @returns {EventManager} Event manager instance
+ *
+ * @example
+ * import { createEventManager } from './componentBase.js';
+ *
+ * export default function render(container) {
+ *   const events = createEventManager();
+ *
+ *   events.on(button, 'click', handleClick);
+ *   events.delegate(container, 'click', '.card', handleCardClick);
+ *
+ *   return () => events.cleanup();
+ * }
+ */
+export const createEventManager = () => {
+  return new EventManager();
 };

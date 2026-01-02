@@ -9,9 +9,12 @@ import { sampleStories } from '../data/stories.js';
 import GeneratorModal from '../components/GeneratorModal.js';
 import { getStoredStories, deleteStory } from '../utils/storage.js';
 import { toast } from '../components/Toast.js';
-import { debounce } from '../utils/componentBase.js';
+import { debounce, createEventManager } from '../utils/componentBase.js';
 
-const Library = (parentElement) => {
+const Library = parentElement => {
+  // Event manager for all library events
+  const events = createEventManager();
+
   // State
   let currentFilter = 'All';
   let sortBy = 'newest';
@@ -33,10 +36,11 @@ const Library = (parentElement) => {
     // Filter by search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(s =>
-        s.titleJP?.toLowerCase().includes(query) ||
-        s.titleEN?.toLowerCase().includes(query) ||
-        s.excerpt?.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        s =>
+          s.titleJP?.toLowerCase().includes(query) ||
+          s.titleEN?.toLowerCase().includes(query) ||
+          s.excerpt?.toLowerCase().includes(query)
       );
     }
 
@@ -44,16 +48,18 @@ const Library = (parentElement) => {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'oldest':
-          return (a.id > b.id) ? 1 : -1;
-        case 'level-asc':
-          const levels = { 'Beginner': 1, 'Intermediate': 2, 'Advanced': 3 };
+          return a.id > b.id ? 1 : -1;
+        case 'level-asc': {
+          const levels = { Beginner: 1, Intermediate: 2, Advanced: 3 };
           return (levels[a.level] || 0) - (levels[b.level] || 0);
-        case 'level-desc':
-          const levelsDesc = { 'Beginner': 1, 'Intermediate': 2, 'Advanced': 3 };
+        }
+        case 'level-desc': {
+          const levelsDesc = { Beginner: 1, Intermediate: 2, Advanced: 3 };
           return (levelsDesc[b.level] || 0) - (levelsDesc[a.level] || 0);
+        }
         case 'newest':
         default:
-          return (a.id < b.id) ? 1 : -1;
+          return a.id < b.id ? 1 : -1;
       }
     });
 
@@ -82,7 +88,9 @@ const Library = (parentElement) => {
    */
   const updateHeader = () => {
     const headerRoot = parentElement.querySelector('#library-header-root');
-    if (!headerRoot) return;
+    if (!headerRoot) {
+      return;
+    }
 
     const stories = getFilteredStories();
     headerRoot.innerHTML = `
@@ -99,7 +107,7 @@ const Library = (parentElement) => {
       </div>
     `;
 
-    headerRoot.querySelector('#create-btn')?.addEventListener('click', openGeneratorModal);
+    events.on(headerRoot.querySelector('#create-btn'), 'click', openGeneratorModal);
   };
 
   /**
@@ -107,7 +115,9 @@ const Library = (parentElement) => {
    */
   const updateControls = () => {
     const controlsRoot = parentElement.querySelector('#library-controls-root');
-    if (!controlsRoot) return;
+    if (!controlsRoot) {
+      return;
+    }
 
     const filters = ['All', 'Beginner', 'Intermediate', 'Advanced'];
 
@@ -128,25 +138,29 @@ const Library = (parentElement) => {
         
         <!-- Filters -->
         <div class="filters">
-          ${filters.map(filter => `
+          ${filters
+            .map(
+              filter => `
             <button 
               class="filter-btn ${currentFilter === filter ? 'active' : ''}" 
               data-filter="${filter}"
             >
               ${filter}
             </button>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
         
         <!-- Sort & View -->
         <div class="library-options">
-          <select id="sort-select" class="form-select" style="width: auto;">
+          <select id="sort-select" class="form-select form-select--auto">
             <option value="newest" ${sortBy === 'newest' ? 'selected' : ''}>Newest First</option>
             <option value="oldest" ${sortBy === 'oldest' ? 'selected' : ''}>Oldest First</option>
             <option value="level-asc" ${sortBy === 'level-asc' ? 'selected' : ''}>Easiest First</option>
             <option value="level-desc" ${sortBy === 'level-desc' ? 'selected' : ''}>Hardest First</option>
           </select>
-          
+
           <div class="view-toggle">
             <button class="icon-btn ${viewMode === 'grid' ? 'active' : ''}" data-view="grid" title="Grid view">▦</button>
             <button class="icon-btn ${viewMode === 'list' ? 'active' : ''}" data-view="list" title="List view">☰</button>
@@ -155,42 +169,46 @@ const Library = (parentElement) => {
       </div>
     `;
 
-    // Reattach control listeners
+    // Reattach control listeners with EventManager
     const searchInput = controlsRoot.querySelector('#search-input');
-    searchInput?.addEventListener('input', debounce((e) => {
-      searchQuery = e.target.value;
-      controlsRoot.querySelector('#clear-search')?.classList.toggle('hidden', !searchQuery);
-      updateGrid();
-    }, 300));
+    events.on(
+      searchInput,
+      'input',
+      debounce(e => {
+        searchQuery = e.target.value;
+        controlsRoot.querySelector('#clear-search')?.classList.toggle('hidden', !searchQuery);
+        updateGrid();
+      }, 300)
+    );
 
-    controlsRoot.querySelector('#clear-search')?.addEventListener('click', () => {
+    events.on(controlsRoot.querySelector('#clear-search'), 'click', () => {
       searchQuery = '';
-      if (searchInput) searchInput.value = '';
+      if (searchInput) {
+        searchInput.value = '';
+      }
       controlsRoot.querySelector('#clear-search')?.classList.add('hidden');
       updateGrid();
     });
 
-    controlsRoot.querySelector('#sort-select')?.addEventListener('change', (e) => {
+    events.on(controlsRoot.querySelector('#sort-select'), 'change', e => {
       sortBy = e.target.value;
       updateGrid();
     });
 
-    controlsRoot.querySelectorAll('[data-view]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        viewMode = btn.dataset.view;
-        controlsRoot.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        updateGrid();
-      });
+    // Use delegation for view toggle buttons
+    events.delegate(controlsRoot, 'click', '[data-view]', function () {
+      viewMode = this.dataset.view;
+      controlsRoot.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      updateGrid();
     });
 
-    controlsRoot.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        currentFilter = btn.dataset.filter;
-        controlsRoot.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        updateGrid();
-      });
+    // Use delegation for filter buttons
+    events.delegate(controlsRoot, 'click', '.filter-btn', function () {
+      currentFilter = this.dataset.filter;
+      controlsRoot.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      updateGrid();
     });
   };
 
@@ -199,13 +217,17 @@ const Library = (parentElement) => {
    */
   const updateGrid = () => {
     const contentRoot = parentElement.querySelector('#library-content-root');
-    if (!contentRoot) return;
+    if (!contentRoot) {
+      return;
+    }
 
     const stories = getFilteredStories();
 
     // Update count in header if it exists
     const countText = parentElement.querySelector('#story-count-text');
-    if (countText) countText.textContent = `${stories.length} stories available`;
+    if (countText) {
+      countText.textContent = `${stories.length} stories available`;
+    }
 
     if (stories.length > 0) {
       contentRoot.innerHTML = `
@@ -213,6 +235,7 @@ const Library = (parentElement) => {
           ${stories.map(story => StoryCard(story)).join('')}
         </div>
       `;
+      // Setup delegation for delete buttons (works for all current AND future story cards)
       setupGridListeners(contentRoot);
     } else {
       contentRoot.innerHTML = `
@@ -225,43 +248,43 @@ const Library = (parentElement) => {
           <button id="empty-create-btn" class="btn">✨ Create Story</button>
         </div>
       `;
-      contentRoot.querySelector('#empty-create-btn')?.addEventListener('click', openGeneratorModal);
+      events.on(contentRoot.querySelector('#empty-create-btn'), 'click', openGeneratorModal);
     }
   };
 
   /**
-   * Grid item listeners (delete, etc)
+   * Grid item listeners using delegation for delete buttons
    */
-  const setupGridListeners = (root) => {
-    root.querySelectorAll('.delete-story-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+  const setupGridListeners = root => {
+    events.delegate(root, 'click', '.delete-story-btn', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
 
-        const id = btn.dataset.id;
-        const storyCard = btn.closest('.story-card');
-        const storyTitle = storyCard?.querySelector('.story-card__title')?.textContent || 'this story';
+      const id = this.dataset.id;
+      const storyCard = this.closest('.story-card');
+      const storyTitle =
+        storyCard?.querySelector('.story-card__title')?.textContent || 'this story';
 
-        const deletedStory = getStoredStories().find(s => s.id === id);
-        deleteStory(id);
+      const deletedStory = getStoredStories().find(s => s.id === id);
+      deleteStory(id);
 
-        if (storyCard) {
-          storyCard.style.transform = 'scale(0.9)';
-          storyCard.style.opacity = '0';
-          setTimeout(() => updateGrid(), 200);
-        }
+      if (storyCard) {
+        storyCard.classList.add('story-card--deleting');
+        setTimeout(() => updateGrid(), 200);
+      }
 
-        toast.success(`"${storyTitle}" deleted`, {
-          action: deletedStory ? () => {
-            const stories = getStoredStories();
-            stories.unshift(deletedStory);
-            localStorage.setItem('nihongo_stories', JSON.stringify(stories));
-            updateGrid();
-            toast.info('Story restored');
-          } : null,
-          actionLabel: 'Undo',
-          duration: 5000
-        });
+      toast.success(`"${storyTitle}" deleted`, {
+        action: deletedStory
+          ? () => {
+              const stories = getStoredStories();
+              stories.unshift(deletedStory);
+              localStorage.setItem('nihongo_stories', JSON.stringify(stories));
+              updateGrid();
+              toast.info('Story restored');
+            }
+          : null,
+        actionLabel: 'Undo',
+        duration: 5000,
       });
     });
   };
@@ -271,11 +294,11 @@ const Library = (parentElement) => {
    */
   const openGeneratorModal = () => {
     const modal = GeneratorModal({
-      onClose: () => { },
-      onGenerate: (newStory) => {
+      onClose: () => {},
+      onGenerate: newStory => {
         toast.success(`"${newStory.titleEN}" created!`);
         updateGrid();
-      }
+      },
     });
     document.body.appendChild(modal);
   };
@@ -284,7 +307,7 @@ const Library = (parentElement) => {
 
   // Cleanup
   return () => {
-    // Basic cleanup if needed
+    events.cleanup();
   };
 };
 
@@ -310,6 +333,16 @@ libraryStyles.textContent = `
   .story-grid--list .story-card { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto 1fr auto; gap: var(--space-2) var(--space-4); padding: var(--space-4); }
   .story-grid--list .story-card__header { grid-column: 1 / -1; }
   .story-grid--list .story-card .btn { width: auto; }
+
+  /* Auto width select */
+  .form-select--auto { width: auto; min-width: 150px; }
+
+  /* Delete animation */
+  .story-card--deleting {
+    transform: scale(0.9);
+    opacity: 0;
+    transition: all 0.2s ease-out;
+  }
 `;
 document.head.appendChild(libraryStyles);
 

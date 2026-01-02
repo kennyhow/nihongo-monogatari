@@ -4,24 +4,28 @@
  */
 
 import { KANA_DATA } from '../data/kana.js';
+import { createEventManager } from '../utils/componentBase.js';
 
-const KanaChart = (parentElement) => {
-    let currentSystem = 'hiragana'; // 'hiragana' or 'katakana'
+const KanaChart = parentElement => {
+  // Event manager
+  const events = createEventManager();
 
-    const render = () => {
-        const data = KANA_DATA[currentSystem];
+  let currentSystem = 'hiragana'; // 'hiragana' or 'katakana'
 
-        // Group into rows of 5
-        const rows = [];
-        for (let i = 0; i < data.length; i += 5) {
-            rows.push(data.slice(i, i + 5).reverse()); // Reverse to show a, i, u, e, o from left if needed? 
-            // Japanese charts usually go:
-            // a i u e o
-            // ka ki ku ke ko
-            // Actually, let's just keep the order as provided in kana.js
-        }
+  const render = () => {
+    const data = KANA_DATA[currentSystem];
 
-        const html = `
+    // Group into rows of 5
+    const rows = [];
+    for (let i = 0; i < data.length; i += 5) {
+      rows.push(data.slice(i, i + 5).reverse()); // Reverse to show a, i, u, e, o from left if needed?
+      // Japanese charts usually go:
+      // a i u e o
+      // ka ki ku ke ko
+      // Actually, let's just keep the order as provided in kana.js
+    }
+
+    const html = `
       <div class="kana-page animate-fade-in">
         <div class="kana-header">
           <h1>Kana Chart</h1>
@@ -35,14 +39,22 @@ const KanaChart = (parentElement) => {
 
         <div class="kana-grid-container">
           <div class="kana-grid">
-            ${data.map(item => `
+            ${data
+              .map(
+                item => `
               <div class="kana-card ${!item.kana ? 'kana-card--empty' : ''}">
-                ${item.kana ? `
+                ${
+                  item.kana
+                    ? `
                   <div class="kana-char">${item.kana}</div>
                   <div class="kana-romaji">${item.romaji}</div>
-                ` : ''}
+                `
+                    : ''
+                }
               </div>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
         </div>
 
@@ -59,20 +71,24 @@ const KanaChart = (parentElement) => {
       </div>
     `;
 
-        parentElement.innerHTML = html;
-        setupListeners();
-    };
+    parentElement.innerHTML = html;
+    setupListeners();
+  };
 
-    const setupListeners = () => {
-        parentElement.querySelectorAll('.toggle-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                currentSystem = btn.dataset.system;
-                render();
-            });
-        });
-    };
+  const setupListeners = () => {
+    // Use delegation for toggle buttons
+    events.delegate(parentElement, 'click', '.toggle-btn', function () {
+      currentSystem = this.dataset.system;
+      render();
+    });
+  };
 
-    render();
+  render();
+
+  // Cleanup
+  return () => {
+    events.cleanup();
+  };
 };
 
 // Add styles

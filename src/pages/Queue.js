@@ -6,8 +6,12 @@
 
 import { audioQueue } from '../utils/audioQueue.js';
 import { toast } from '../components/Toast.js';
+import { createEventManager } from '../utils/componentBase.js';
 
-const Queue = (parentElement) => {
+const Queue = parentElement => {
+  // Event manager
+  const events = createEventManager();
+
   let unsubscribe = null;
   let currentQueue = [];
 
@@ -45,7 +49,9 @@ const Queue = (parentElement) => {
    */
   const updateHeader = () => {
     const root = parentElement.querySelector('#queue-header-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
     root.innerHTML = `
       <div class="queue-header">
         <div>
@@ -59,7 +65,7 @@ const Queue = (parentElement) => {
   /**
    * Update all dynamic parts of the UI
    */
-  const updateUI = (queue) => {
+  const updateUI = queue => {
     currentQueue = queue;
     updateStats();
     updateErrorBanner();
@@ -72,7 +78,9 @@ const Queue = (parentElement) => {
    */
   const updateStats = () => {
     const root = parentElement.querySelector('#queue-stats-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     const total = currentQueue.length;
     const pending = currentQueue.filter(i => i.status === 'pending').length;
@@ -110,13 +118,17 @@ const Queue = (parentElement) => {
           <div class="queue-stat__label">Completed</div>
         </div>
         
-        ${errors > 0 ? `
+        ${
+          errors > 0
+            ? `
           <div class="queue-stat queue-stat--error">
             <div class="queue-stat__icon">⚠️</div>
             <div class="queue-stat__value">${errors}</div>
             <div class="queue-stat__label">Failed</div>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
     `;
   };
@@ -126,7 +138,9 @@ const Queue = (parentElement) => {
    */
   const updateErrorBanner = () => {
     const root = parentElement.querySelector('#queue-error-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     const errors = currentQueue.filter(i => i.status === 'error').length;
     if (errors === 0) {
@@ -141,7 +155,7 @@ const Queue = (parentElement) => {
       </div>
     `;
 
-    root.querySelector('#retry-btn')?.addEventListener('click', () => {
+    events.on(root.querySelector('#retry-btn'), 'click', () => {
       audioQueue.retryFailed();
       toast.info('Retrying failed items...');
     });
@@ -152,7 +166,9 @@ const Queue = (parentElement) => {
    */
   const updateGlobalProgress = () => {
     const root = parentElement.querySelector('#queue-progress-root');
-    if (!root) return;
+    if (!root) {
+      return;
+    }
 
     const total = currentQueue.length;
     const completed = currentQueue.filter(i => i.status === 'completed').length;
@@ -175,19 +191,19 @@ const Queue = (parentElement) => {
       <div class="queue-progress-section">
         <div class="flex justify-between items-center mb-4">
           <h2>Processing Progress</h2>
-          <button id="clear-queue-btn" class="btn btn--ghost btn--sm" style="color: var(--color-error);">
+          <button id="clear-queue-btn" class="btn btn--ghost btn--sm btn--danger">
             🗑️ Clear All
           </button>
         </div>
-        
-        <div class="progress" style="height: 12px; margin-bottom: var(--space-2);">
+
+        <div class="progress progress--lg mb-4">
           <div class="progress__bar" style="width: ${(completed / total) * 100}%;"></div>
         </div>
         <p class="text-muted text-center">${completed} of ${total} segments completed</p>
       </div>
     `;
 
-    root.querySelector('#clear-queue-btn')?.addEventListener('click', () => {
+    events.on(root.querySelector('#clear-queue-btn'), 'click', () => {
       if (confirm('Clear all pending audio generations?')) {
         audioQueue.clearQueue();
         toast.info('Queue cleared');
@@ -201,7 +217,9 @@ const Queue = (parentElement) => {
   const updateQueueList = () => {
     const root = parentElement.querySelector('#queue-list-root');
     if (!root || currentQueue.length === 0) {
-      if (root) root.innerHTML = '';
+      if (root) {
+        root.innerHTML = '';
+      }
       return;
     }
 
@@ -209,30 +227,35 @@ const Queue = (parentElement) => {
     const grouped = {};
     currentQueue.forEach(item => {
       const title = item.storyTitle || 'Unknown Story';
-      if (!grouped[title]) grouped[title] = [];
+      if (!grouped[title]) {
+        grouped[title] = [];
+      }
       grouped[title].push(item);
     });
 
     root.innerHTML = `
       <div class="queue-list">
-        ${Object.keys(grouped).map(title => {
-      const items = grouped[title];
-      const storyCompleted = items.filter(i => i.status === 'completed').length;
-      const storyProgress = (storyCompleted / items.length) * 100;
+        ${Object.keys(grouped)
+          .map(title => {
+            const items = grouped[title];
+            const storyCompleted = items.filter(i => i.status === 'completed').length;
+            const storyProgress = (storyCompleted / items.length) * 100;
 
-      return `
+            return `
             <div class="queue-card card">
               <div class="queue-card__header">
                 <h3 class="queue-card__title">${title}</h3>
                 <span class="queue-card__count">${storyCompleted}/${items.length}</span>
               </div>
-              
-              <div class="progress mb-4" style="height: 6px;">
+
+              <div class="progress progress--sm mb-4">
                 <div class="progress__bar" style="width: ${storyProgress}%;"></div>
               </div>
               
               <div class="queue-card__items">
-                ${items.map((item, idx) => `
+                ${items
+                  .map(
+                    (item, idx) => `
                   <div class="queue-item queue-item--${item.status}">
                     <span class="queue-item__index">${idx + 1}</span>
                     <span class="queue-item__text">${item.text.substring(0, 40)}${item.text.length > 40 ? '...' : ''}</span>
@@ -243,17 +266,20 @@ const Queue = (parentElement) => {
                       ${item.status === 'pending' ? '○' : ''}
                     </span>
                   </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </div>
             </div>
           `;
-    }).join('')}
+          })
+          .join('')}
       </div>
     `;
   };
 
   // Subscribe to queue updates
-  unsubscribe = audioQueue.subscribe((queue) => {
+  unsubscribe = audioQueue.subscribe(queue => {
     updateUI(queue);
   });
 
@@ -261,7 +287,10 @@ const Queue = (parentElement) => {
 
   // Return cleanup
   return () => {
-    if (unsubscribe) unsubscribe();
+    events.cleanup();
+    if (unsubscribe) {
+      unsubscribe();
+    }
   };
 };
 
@@ -300,6 +329,11 @@ queueStyles.textContent = `
   .queue-info__list { list-style: none; padding: 0; }
   .queue-info__list li { position: relative; padding-left: var(--space-6); margin-bottom: var(--space-2); color: var(--color-text-secondary); font-size: var(--text-sm); }
   .queue-info__list li::before { content: "•"; position: absolute; left: var(--space-2); color: var(--color-primary); }
+
+  /* Utility classes for inline styles */
+  .btn--danger { color: var(--color-error); }
+  .progress--lg { height: 12px; margin-bottom: var(--space-2); }
+  .progress--sm { height: 6px; }
 `;
 document.head.appendChild(queueStyles);
 

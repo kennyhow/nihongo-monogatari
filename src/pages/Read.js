@@ -8,14 +8,18 @@ import { sampleStories } from '../data/stories.js';
 import { getStoredStories, getStoryProgress } from '../utils/storage.js';
 import { toast } from '../components/Toast.js';
 import { navigate, getRouteInfo } from '../utils/router.js';
+import { createEventManager } from '../utils/componentBase.js';
 
-const Read = (parentElement) => {
-    // Get story ID from URL
-    const { query } = getRouteInfo();
-    const storyId = query.get('id');
+const Read = parentElement => {
+  // Event manager
+  const events = createEventManager();
 
-    if (!storyId) {
-        parentElement.innerHTML = `
+  // Get story ID from URL
+  const { query } = getRouteInfo();
+  const storyId = query.get('id');
+
+  if (!storyId) {
+    parentElement.innerHTML = `
       <div class="empty-state">
         <div class="empty-state__icon">❓</div>
         <h2 class="empty-state__title">No Story Selected</h2>
@@ -23,15 +27,15 @@ const Read = (parentElement) => {
         <a href="#/library" class="btn">📚 Go to Library</a>
       </div>
     `;
-        return;
-    }
+    return;
+  }
 
-    // Find story
-    const allStories = [...getStoredStories(), ...sampleStories];
-    const story = allStories.find(s => s.id === storyId);
+  // Find story
+  const allStories = [...getStoredStories(), ...sampleStories];
+  const story = allStories.find(s => s.id === storyId);
 
-    if (!story) {
-        parentElement.innerHTML = `
+  if (!story) {
+    parentElement.innerHTML = `
       <div class="empty-state">
         <div class="empty-state__icon">🔍</div>
         <h2 class="empty-state__title">Story Not Found</h2>
@@ -39,15 +43,15 @@ const Read = (parentElement) => {
         <a href="#/library" class="btn">📚 Go to Library</a>
       </div>
     `;
-        return;
-    }
+    return;
+  }
 
-    // Get reading progress
-    const progress = getStoryProgress(storyId);
+  // Get reading progress
+  const progress = getStoryProgress(storyId);
 
-    // Show continue prompt if has progress
-    if (progress && progress.scrollPercent > 10 && !progress.completed) {
-        parentElement.innerHTML = `
+  // Show continue prompt if has progress
+  if (progress && progress.scrollPercent > 10 && !progress.completed) {
+    parentElement.innerHTML = `
       <div class="continue-prompt">
         <div class="continue-prompt__card card">
           <h2>📖 Continue Reading?</h2>
@@ -60,39 +64,41 @@ const Read = (parentElement) => {
       </div>
     `;
 
-        parentElement.querySelector('#continue-btn')?.addEventListener('click', () => {
-            renderReader(story, progress);
-        });
+    events.on(parentElement.querySelector('#continue-btn'), 'click', () => {
+      renderReader(story, progress);
+    });
 
-        parentElement.querySelector('#restart-btn')?.addEventListener('click', () => {
-            renderReader(story, null);
-        });
+    events.on(parentElement.querySelector('#restart-btn'), 'click', () => {
+      renderReader(story, null);
+    });
 
-        return;
-    }
+    return () => events.cleanup();
+  }
 
-    // Render reader directly
-    renderReader(story, progress);
+  // Render reader directly
+  renderReader(story, progress);
 
-    function renderReader(storyData, initialProgress) {
-        parentElement.innerHTML = '';
+  function renderReader(storyData, initialProgress) {
+    parentElement.innerHTML = '';
 
-        const reader = Reader({
-            story: storyData,
-            initialProgress,
-            onComplete: () => {
-                toast.success('🎉 Story completed!');
-                navigate('/library');
-            }
-        });
+    const reader = Reader({
+      story: storyData,
+      initialProgress,
+      onComplete: () => {
+        toast.success('🎉 Story completed!');
+        navigate('/library');
+      },
+    });
 
-        parentElement.appendChild(reader);
+    parentElement.appendChild(reader);
 
-        // Return cleanup
-        return () => {
-            if (reader._cleanup) reader._cleanup();
-        };
-    }
+    // Return cleanup
+    return () => {
+      if (reader._cleanup) {
+        reader._cleanup();
+      }
+    };
+  }
 };
 
 // Add continue prompt styles

@@ -8,6 +8,7 @@ import { addStory } from '../utils/storage.js';
 import { audioQueue } from '../utils/audioQueue.js';
 import { toast } from './Toast.js';
 import { storyTopics } from '../data/storyTopics.js';
+import { createEventManager } from '../utils/componentBase.js';
 
 /**
  * Create and show the story generator modal
@@ -153,26 +154,29 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
   const closeBtn = overlay.querySelector('.modal__close');
   const submitBtn = overlay.querySelector('#generate-btn');
   const loadingState = overlay.querySelector('#loading-state');
+  const randomTopicBtn = overlay.querySelector('#random-topic-btn');
+  const topicInput = overlay.querySelector('#topic');
+
+  // Event manager for cleanup
+  const events = createEventManager();
 
   // Close modal
   const close = () => {
     overlay.style.animation = 'fadeOut 0.2s ease-out forwards';
     overlay.querySelector('.modal').style.animation = 'modalSlideDown 0.2s ease-out forwards';
     setTimeout(() => {
+      events.cleanup();
       overlay.remove();
       onClose();
     }, 200);
   };
 
   // Event handlers
-  cancelBtn.addEventListener('click', close);
-  closeBtn.addEventListener('click', close);
+  events.on(cancelBtn, 'click', close);
+  events.on(closeBtn, 'click', close);
 
   // Random topic functionality
-  const randomTopicBtn = overlay.querySelector('#random-topic-btn');
-  const topicInput = overlay.querySelector('#topic');
-
-  randomTopicBtn.addEventListener('click', () => {
+  events.on(randomTopicBtn, 'click', () => {
     const randomIndex = Math.floor(Math.random() * storyTopics.length);
     const selectedTopic = storyTopics[randomIndex];
 
@@ -187,25 +191,29 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
         clearInterval(shuffleInterval);
         topicInput.value = selectedTopic;
         // Trigger animation
-        randomTopicBtn.style.animation = 'none';
-        randomTopicBtn.offsetHeight; // Trigger reflow
-        randomTopicBtn.style.animation = 'diceRoll 0.5s ease-out';
+        randomTopicBtn.classList.remove('dice-animate');
+        void randomTopicBtn.offsetWidth; // Trigger reflow
+        randomTopicBtn.classList.add('dice-animate');
       }
     }, 60);
   });
 
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) close();
+  // Close on overlay click
+  events.on(overlay, 'click', e => {
+    if (e.target === overlay) {
+      close();
+    }
   });
 
   // Escape key to close
-  const handleEscape = (e) => {
-    if (e.key === 'Escape') close();
-  };
-  document.addEventListener('keydown', handleEscape);
+  events.on(document, 'keydown', e => {
+    if (e.key === 'Escape') {
+      close();
+    }
+  });
 
   // Form submission
-  form.addEventListener('submit', async (e) => {
+  events.on(form, 'submit', async e => {
     e.preventDefault();
 
     const topic = document.getElementById('topic').value.trim();
@@ -219,7 +227,7 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
     }
 
     // Show loading state
-    form.querySelectorAll('input, textarea').forEach(el => el.disabled = true);
+    form.querySelectorAll('input, textarea').forEach(el => (el.disabled = true));
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="animate-spin">⏳</span> Generating...';
     loadingState.classList.remove('hidden');
@@ -240,16 +248,14 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
       // Success!
       onGenerate(newStory);
 
-      // Cleanup and close
-      document.removeEventListener('keydown', handleEscape);
+      // Close (will cleanup events automatically)
       close();
-
     } catch (error) {
       console.error('Generation failed:', error);
       toast.error('Failed to generate story. Please check your API key and try again.');
 
       // Reset form
-      form.querySelectorAll('input, textarea').forEach(el => el.disabled = false);
+      form.querySelectorAll('input, textarea').forEach(el => (el.disabled = false));
       submitBtn.disabled = false;
       submitBtn.innerHTML = 'Generate Story ✨';
       loadingState.classList.add('hidden');
@@ -468,6 +474,10 @@ modalStyles.textContent = `
 
   .random-btn:active {
     transform: scale(0.95);
+  }
+
+  .random-btn.dice-animate {
+    animation: diceRoll 0.5s ease-out;
   }
 
   @keyframes diceRoll {

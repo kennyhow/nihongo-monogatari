@@ -5,10 +5,14 @@
 
 import { getTheme, toggleTheme } from '../utils/storage.js';
 import { audioQueue } from '../utils/audioQueue.js';
+import { createEventManager } from '../utils/componentBase.js';
 
-const Header = (parentElement) => {
+const Header = parentElement => {
   let queueCount = 0;
   let unsubscribe = null;
+
+  // Event manager for all header events
+  const events = createEventManager();
 
   const render = () => {
     const theme = getTheme();
@@ -59,39 +63,37 @@ const Header = (parentElement) => {
   };
 
   const setupListeners = () => {
-    // Theme toggle
     const themeBtn = parentElement.querySelector('#theme-toggle');
-    themeBtn?.addEventListener('click', () => {
+    const mobileMenuBtn = parentElement.querySelector('#mobile-menu-btn');
+    const mobileMenu = parentElement.querySelector('#mobile-menu');
+
+    // Theme toggle
+    events.on(themeBtn, 'click', () => {
       const newTheme = toggleTheme();
       const icon = themeBtn.querySelector('.theme-icon');
       icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
 
-      // Add a little animation
-      themeBtn.style.transform = 'scale(1.2) rotate(180deg)';
+      // Add a little animation using CSS class
+      themeBtn.classList.add('theme-icon--animating');
       setTimeout(() => {
-        themeBtn.style.transform = '';
+        themeBtn.classList.remove('theme-icon--animating');
       }, 300);
     });
 
     // Mobile menu toggle
-    const mobileMenuBtn = parentElement.querySelector('#mobile-menu-btn');
-    const mobileMenu = parentElement.querySelector('#mobile-menu');
-
-    mobileMenuBtn?.addEventListener('click', () => {
+    events.on(mobileMenuBtn, 'click', () => {
       mobileMenu?.classList.toggle('hidden');
       mobileMenu?.classList.toggle('open');
     });
 
-    // Close mobile menu on link click
-    mobileMenu?.querySelectorAll('.mobile-menu__link').forEach(link => {
-      link.addEventListener('click', () => {
-        mobileMenu.classList.add('hidden');
-        mobileMenu.classList.remove('open');
-      });
+    // Close mobile menu on link click (use delegation for all links)
+    events.delegate(mobileMenu, 'click', '.mobile-menu__link', () => {
+      mobileMenu.classList.add('hidden');
+      mobileMenu.classList.remove('open');
     });
 
-    // Close on outside click
-    document.addEventListener('click', (e) => {
+    // Close on outside click (THIS WAS THE MEMORY LEAK!)
+    events.on(document, 'click', e => {
       if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
         if (!parentElement.contains(e.target)) {
           mobileMenu.classList.add('hidden');
@@ -103,14 +105,16 @@ const Header = (parentElement) => {
 
   // Subscribe to queue updates
   try {
-    unsubscribe = audioQueue.subscribe((queue) => {
-      const newCount = queue.filter(item => item.status === 'pending' || item.status === 'processing').length;
+    unsubscribe = audioQueue.subscribe(queue => {
+      const newCount = queue.filter(
+        item => item.status === 'pending' || item.status === 'processing'
+      ).length;
       if (newCount !== queueCount) {
         queueCount = newCount;
         render();
       }
     });
-  } catch (e) {
+  } catch {
     // audioQueue might not be initialized
   }
 
@@ -118,7 +122,10 @@ const Header = (parentElement) => {
 
   // Return cleanup function
   return () => {
-    if (unsubscribe) unsubscribe();
+    events.cleanup();
+    if (unsubscribe) {
+      unsubscribe();
+    }
   };
 };
 
@@ -212,9 +219,13 @@ headerStyles.textContent = `
       transform: translateY(0);
     }
   }
-  
+
   #theme-toggle {
     transition: transform 0.3s var(--ease-spring);
+  }
+
+  #theme-toggle.theme-icon--animating {
+    transform: scale(1.2) rotate(180deg);
   }
 `;
 document.head.appendChild(headerStyles);

@@ -4,9 +4,9 @@
  * Refactored to use granular updates and avoid full DOM overwrites.
  */
 
-import { saveProgress, getStoryProgress, getSettings, getApiKeys } from '../utils/storage.js';
-import { playAudio, cancelAudio, getAudioState, isAudioCached } from '../utils/audio.js';
-import { formatTime } from '../utils/componentBase.js';
+import { saveProgress, getSettings, saveSettings, getApiKeys } from '../utils/storage.js';
+import { playAudio, cancelAudio, isAudioCached } from '../utils/audio.js';
+import { createEventManager } from '../utils/componentBase.js';
 import { KANA_DATA } from '../data/kana.js';
 import { getCachedImage, cacheImage } from '../utils/imageStorage.js';
 
@@ -14,6 +14,9 @@ import { getCachedImage, cacheImage } from '../utils/imageStorage.js';
  * Create the Reader component
  */
 const Reader = ({ story, initialProgress, onComplete }) => {
+  // Event manager for all reader events
+  const events = createEventManager();
+
   const settings = getSettings();
   let isSideBySide = settings.viewMode === 'side-by-side';
   let showFurigana = settings.showFurigana;
@@ -26,7 +29,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   let activeSegmentIndex = -1;
   let isPlaying = false;
   let isHQAvailable = false;
-  let playbackProgress = 0;
+  const playbackProgress = 0;
   let isLoadingImages = false;
 
   // Container element
@@ -141,7 +144,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    */
   const updateHeader = () => {
     const headerRoot = container.querySelector('#reader-header-root');
-    if (!headerRoot) return;
+    if (!headerRoot) {
+      return;
+    }
 
     headerRoot.innerHTML = `
       <div class="reader__header-content">
@@ -155,15 +160,23 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         
         <div class="reader__controls">
           <button id="settings-btn" class="icon-btn" title="Reading settings">⚙️</button>
-          ${isPlaying ? `
+          ${
+            isPlaying
+              ? `
             <button id="stop-btn" class="btn btn--secondary btn--sm">⏹ Stop</button>
-          ` : `
-            ${isHQAvailable ? `
+          `
+              : `
+            ${
+              isHQAvailable
+                ? `
               <button id="play-hq-btn" class="btn btn--sm btn--accent" title="Play High-Quality AI Voice">✨ Play HQ Story</button>
-            ` : `
+            `
+                : `
               <div class="loader-sm" title="Generating high-quality audio..."></div>
-            `}
-          `}
+            `
+            }
+          `
+          }
         </div>
       </div>
       
@@ -175,10 +188,21 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       </div>
     `;
 
-    // Re-attach specific header listeners
-    headerRoot.querySelector('#stop-btn')?.addEventListener('click', stopPlayback);
-    headerRoot.querySelector('#play-hq-btn')?.addEventListener('click', startPlayback);
-    headerRoot.querySelector('#settings-btn')?.addEventListener('click', toggleSettings);
+    // Re-attach specific header listeners with EventManager
+    // Only attach if elements exist (they're conditionally rendered)
+    const stopBtn = headerRoot.querySelector('#stop-btn');
+    const playHqBtn = headerRoot.querySelector('#play-hq-btn');
+    const settingsBtn = headerRoot.querySelector('#settings-btn');
+
+    if (stopBtn) {
+      events.on(stopBtn, 'click', stopPlayback);
+    }
+    if (playHqBtn) {
+      events.on(playHqBtn, 'click', startPlayback);
+    }
+    if (settingsBtn) {
+      events.on(settingsBtn, 'click', toggleSettings);
+    }
   };
 
   /**
@@ -186,7 +210,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    */
   const updateAudioUI = () => {
     const audioRoot = container.querySelector('#audio-player-root');
-    if (!audioRoot) return;
+    if (!audioRoot) {
+      return;
+    }
 
     if (!isPlaying) {
       audioRoot.innerHTML = '';
@@ -210,16 +236,21 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   /**
    * Wrap kana characters for lookup
    */
-  const wrapKana = (text) => {
-    if (!text) return '';
+  const wrapKana = text => {
+    if (!text) {
+      return '';
+    }
     // Wrap Hiragana (\u3040-\u309F) and Katakana (\u30A0-\u30FF)
-    return text.replace(/([\u3040-\u309F\u30A0-\u30FF])/g, '<span class="kana-lookup" data-char="$1">$1</span>');
+    return text.replace(
+      /([\u3040-\u309F\u30A0-\u30FF])/g,
+      '<span class="kana-lookup" data-char="$1">$1</span>'
+    );
   };
 
   /**
    * Find kana data by character
    */
-  const findKanaData = (char) => {
+  const findKanaData = char => {
     const isKatakana = /[\u30A0-\u30FF]/.test(char);
     const system = isKatakana ? 'katakana' : 'hiragana';
     return KANA_DATA[system].find(item => item.kana === char);
@@ -230,16 +261,24 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    */
   const showKanaTooltip = (char, x, y, isMobile = false) => {
     const tooltip = container.querySelector('#kana-tooltip');
-    if (!tooltip) return;
+    if (!tooltip) {
+      return;
+    }
 
     const kanaData = findKanaData(char);
-    if (!kanaData) return;
+    if (!kanaData) {
+      return;
+    }
 
     // Update content
     const charEl = tooltip.querySelector('#kana-tooltip-char');
     const romajiEl = tooltip.querySelector('#kana-tooltip-romaji');
-    if (charEl) charEl.textContent = char;
-    if (romajiEl) romajiEl.textContent = kanaData.romaji;
+    if (charEl) {
+      charEl.textContent = char;
+    }
+    if (romajiEl) {
+      romajiEl.textContent = kanaData.romaji;
+    }
 
     // Position tooltip
     tooltip.classList.remove('hidden');
@@ -282,7 +321,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    */
   const hideKanaTooltip = () => {
     const tooltip = container.querySelector('#kana-tooltip');
-    if (!tooltip) return;
+    if (!tooltip) {
+      return;
+    }
 
     tooltip.classList.add('hidden');
     tooltip.style.left = '';
@@ -294,10 +335,14 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    */
   const updateContent = () => {
     const contentRoot = container.querySelector('#reader-content-root');
-    if (!contentRoot) return;
+    if (!contentRoot) {
+      return;
+    }
 
     if (contentRoot.children.length === 0) {
-      contentRoot.innerHTML = story.content.map((segment, index) => `
+      contentRoot.innerHTML = story.content
+        .map(
+          (segment, index) => `
         <div class="segment" id="segment-${index}" data-index="${index}">
           <div class="segment__image-container ${!showImages ? 'hidden' : ''}" id="image-container-${index}">
              <div class="segment__image-skeleton skeleton"></div>
@@ -309,19 +354,29 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           </div>
           <div class="segment__en ${!showEnglish ? 'hidden' : ''}">
             <p>${segment.en}</p>
-            ${segment.notes?.length > 0 ? `
+            ${
+              segment.notes?.length > 0
+                ? `
               <div class="segment__notes">
-                ${segment.notes.map(note => `
+                ${segment.notes
+                  .map(
+                    note => `
                   <div class="segment__note">
                     <span class="segment__note-term">${note.term}:</span>
                     <span class="segment__note-meaning">${note.meaning}</span>
                   </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </div>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
         </div>
-      `).join('');
+      `
+        )
+        .join('');
     }
 
     // Update active/dimmed states
@@ -329,7 +384,10 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       const el = container.querySelector(`#segment-${index}`);
       if (el) {
         el.classList.toggle('segment--active', activeSegmentIndex === index);
-        el.classList.toggle('segment--dimmed', activeSegmentIndex !== -1 && activeSegmentIndex !== index);
+        el.classList.toggle(
+          'segment--dimmed',
+          activeSegmentIndex !== -1 && activeSegmentIndex !== index
+        );
       }
     });
   };
@@ -339,13 +397,17 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    */
   const updateComprehension = () => {
     const compRoot = container.querySelector('#comprehension-root');
-    if (!compRoot || !story.questions || story.questions.length === 0) return;
+    if (!compRoot || !story.questions || story.questions.length === 0) {
+      return;
+    }
 
     compRoot.innerHTML = `
       <div class="comprehension">
         <h2 class="comprehension__title">📝 Comprehension Check</h2>
         <div class="comprehension__list">
-          ${story.questions.map((q, i) => `
+          ${story.questions
+            .map(
+              (q, i) => `
             <div class="question-card" id="question-${i}">
               <p class="question-card__text"><strong>Q${i + 1}:</strong> ${q.question}</p>
               <div class="question-card__options">
@@ -359,19 +421,19 @@ const Reader = ({ story, initialProgress, onComplete }) => {
                 </div>
               </div>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
       </div>
     `;
 
-    // Add listners for reveal buttons
-    compRoot.querySelectorAll('.reveal-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        const answerEl = compRoot.querySelector(`#answer-${id}`);
-        answerEl?.classList.toggle('hidden');
-        btn.textContent = answerEl?.classList.contains('hidden') ? 'Reveal Answer' : 'Hide Answer';
-      });
+    // Use delegation for reveal buttons
+    events.delegate(compRoot, 'click', '.reveal-btn', function () {
+      const id = this.dataset.id;
+      const answerEl = compRoot.querySelector(`#answer-${id}`);
+      answerEl?.classList.toggle('hidden');
+      this.textContent = answerEl?.classList.contains('hidden') ? 'Reveal Answer' : 'Hide Answer';
     });
   };
 
@@ -379,43 +441,49 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    * Initial listeners
    */
   const setupListeners = () => {
-    container.querySelector('#complete-btn')?.addEventListener('click', () => {
+    events.on(container.querySelector('#complete-btn'), 'click', () => {
       saveProgress(story.id, { completed: true, scrollPercent: 100 });
       cancelAudio();
-      if (onComplete) onComplete();
+      if (onComplete) {
+        onComplete();
+      }
     });
 
-    container.querySelector('#close-settings')?.addEventListener('click', toggleSettings);
+    events.on(container.querySelector('#close-settings'), 'click', toggleSettings);
 
-    container.querySelector('#toggle-furigana')?.addEventListener('change', (e) => {
+    events.on(container.querySelector('#toggle-furigana'), 'change', e => {
       showFurigana = e.target.checked;
       const jpTexts = container.querySelectorAll('.segment__jp-text');
       jpTexts.forEach((el, i) => {
-        el.innerHTML = wrapKana(showFurigana && story.content[i].jp_furigana
-          ? story.content[i].jp_furigana
-          : story.content[i].jp);
+        el.innerHTML = wrapKana(
+          showFurigana && story.content[i].jp_furigana
+            ? story.content[i].jp_furigana
+            : story.content[i].jp
+        );
       });
     });
 
-    container.querySelector('#toggle-english')?.addEventListener('change', (e) => {
+    events.on(container.querySelector('#toggle-english'), 'change', e => {
       showEnglish = e.target.checked;
       container.querySelectorAll('.segment__en').forEach(el => {
         el.classList.toggle('hidden', !showEnglish);
       });
     });
 
-    // Hover lookup logic (desktop)
+    // Hover lookup logic (desktop) - use delegation for kana-lookup
     const contentRoot = container.querySelector('#reader-content-root');
-    contentRoot?.addEventListener('mouseover', (e) => {
+    events.on(contentRoot, 'mouseover', e => {
       const target = e.target.closest('.kana-lookup');
-      if (!target) return;
+      if (!target) {
+        return;
+      }
 
       const char = target.dataset.char;
       showKanaTooltip(char, e.clientX, e.clientY, false);
     });
 
     // Update tooltip position on mouse move
-    contentRoot?.addEventListener('mousemove', (e) => {
+    events.on(contentRoot, 'mousemove', e => {
       const target = e.target.closest('.kana-lookup');
       if (!target) {
         hideKanaTooltip();
@@ -427,7 +495,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     });
 
     // Hide tooltip on mouse out
-    contentRoot?.addEventListener('mouseout', (e) => {
+    events.on(contentRoot, 'mouseout', e => {
       const target = e.target.closest('.kana-lookup');
       if (target) {
         hideKanaTooltip();
@@ -435,65 +503,73 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     });
 
     // Mobile tap logic
-    contentRoot?.addEventListener('touchstart', (e) => {
-      const target = e.target.closest('.kana-lookup');
-      const tooltip = container.querySelector('#kana-tooltip');
-      const isTooltipVisible = !tooltip?.classList.contains('hidden');
+    events.on(
+      contentRoot,
+      'touchstart',
+      e => {
+        const target = e.target.closest('.kana-lookup');
+        const tooltip = container.querySelector('#kana-tooltip');
+        const isTooltipVisible = !tooltip?.classList.contains('hidden');
 
-      if (target) {
-        // Tapping on a kana character
-        e.preventDefault(); // Prevent text selection and other default behaviors
-        const char = target.dataset.char;
-        const touch = e.touches[0];
+        if (target) {
+          // Tapping on a kana character
+          e.preventDefault(); // Prevent text selection and other default behaviors
+          const char = target.dataset.char;
+          const touch = e.touches[0];
 
-        // Toggle tooltip visibility
-        if (isTooltipVisible) {
+          // Toggle tooltip visibility
+          if (isTooltipVisible) {
+            hideKanaTooltip();
+          } else {
+            showKanaTooltip(char, touch.clientX, touch.clientY, true);
+          }
+        } else if (isTooltipVisible) {
+          // Tapping elsewhere while tooltip is visible - hide it
           hideKanaTooltip();
-        } else {
-          showKanaTooltip(char, touch.clientX, touch.clientY, true);
         }
-      } else if (isTooltipVisible) {
-        // Tapping elsewhere while tooltip is visible - hide it
-        hideKanaTooltip();
-      }
-    }, { passive: false });
+      },
+      { passive: false }
+    );
 
-    container.querySelector('#toggle-side-by-side')?.addEventListener('change', (e) => {
+    events.on(container.querySelector('#toggle-side-by-side'), 'change', e => {
       isSideBySide = e.target.checked;
       const contentRoot = container.querySelector('#reader-content-root');
       contentRoot?.classList.toggle('reader__content--side-by-side', isSideBySide);
     });
 
-    container.querySelector('#toggle-images')?.addEventListener('change', (e) => {
+    events.on(container.querySelector('#toggle-images'), 'change', e => {
       showImages = e.target.checked;
       container.querySelectorAll('.segment__image-container').forEach(el => {
         el.classList.toggle('hidden', !showImages);
       });
-      if (showImages) loadImages();
+      if (showImages) {
+        loadImages();
+      }
     });
 
-    // Font size controls
-    container.querySelectorAll('.font-size-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const size = e.currentTarget.dataset.size;
-        fontSizeClass = size === 'large' ? 'reader--large' : '';
+    // Use delegation for font size buttons
+    events.delegate(container, 'click', '.font-size-btn', function () {
+      const size = this.dataset.size;
+      fontSizeClass = size === 'large' ? 'reader--large' : '';
 
-        // Update UI
-        container.querySelector('.reader').classList.toggle('reader--large', size === 'large');
-        container.querySelectorAll('.font-size-btn').forEach(b => {
-          b.classList.toggle('active', b.dataset.size === size);
-        });
-
-        // Save to storage
-        const settings = getSettings();
-        settings.fontSize = size;
-        saveSettings(settings);
+      // Update UI
+      container.querySelector('.reader').classList.toggle('reader--large', size === 'large');
+      container.querySelectorAll('.font-size-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.size === size);
       });
+
+      // Save to storage
+      const settings = getSettings();
+      settings.fontSize = size;
+      saveSettings(settings);
     });
 
-    window.addEventListener('scroll', handleScroll);
+    // Window scroll listener
+    events.on(window, 'scroll', handleScroll);
+
+    // Cleanup function
     container._cleanup = () => {
-      window.removeEventListener('scroll', handleScroll);
+      events.cleanup();
       cancelAudio();
     };
   };
@@ -509,8 +585,12 @@ const Reader = ({ story, initialProgress, onComplete }) => {
 
       const bar = container.querySelector('.progress__bar');
       const txt = container.querySelector('.reader__progress-text');
-      if (bar) bar.style.width = `${currentProgress}%`;
-      if (txt) txt.textContent = `${Math.round(currentProgress)}% complete`;
+      if (bar) {
+        bar.style.width = `${currentProgress}%`;
+      }
+      if (txt) {
+        txt.textContent = `${Math.round(currentProgress)}% complete`;
+      }
     }
   };
 
@@ -525,13 +605,17 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     updateAudioUI();
     updateContent();
 
-    playAudio(story.content[0].jp, () => {
-      isPlaying = false;
-      activeSegmentIndex = -1;
-      updateHeader();
-      updateAudioUI();
-      updateContent();
-    }, story.id);
+    playAudio(
+      story.content[0].jp,
+      () => {
+        isPlaying = false;
+        activeSegmentIndex = -1;
+        updateHeader();
+        updateAudioUI();
+        updateContent();
+      },
+      story.id
+    );
   };
 
   const stopPlayback = () => {
@@ -544,13 +628,17 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   };
 
   const loadImages = async () => {
-    if (!showImages || isLoadingImages) return;
+    if (!showImages || isLoadingImages) {
+      return;
+    }
     isLoadingImages = true;
 
     try {
       const loadPromises = story.content.map(async (_, i) => {
         const imgContainer = container.querySelector(`#image-container-${i}`);
-        if (!imgContainer || imgContainer.querySelector('.segment__image')) return;
+        if (!imgContainer || imgContainer.querySelector('.segment__image')) {
+          return;
+        }
 
         try {
           const cachedUrl = await getCachedImage(story.id, i);
@@ -562,14 +650,17 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           const apiKeys = getApiKeys();
           const apiKey = apiKeys.pollinations || import.meta.env.VITE_POLLINATIONS_AI_KEY;
           // Use dedicated imagePrompt if available, otherwise fall back to raw text
-          const imagePrompt = story.content[i].imagePrompt || `${story.content[i].jp}, anime style, soft colors`;
+          const imagePrompt =
+            story.content[i].imagePrompt || `${story.content[i].jp}, anime style, soft colors`;
           const prompt = encodeURIComponent(imagePrompt);
           const imageUrl = `https://gen.pollinations.ai/image/${prompt}?model=zimage`;
 
           const response = await fetch(imageUrl, {
-            headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
+            headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
           });
-          if (!response.ok) throw new Error('API Error');
+          if (!response.ok) {
+            throw new Error('API Error');
+          }
           const blob = await response.blob();
 
           await cacheImage(story.id, i, blob);
