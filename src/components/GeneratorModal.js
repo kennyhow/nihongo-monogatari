@@ -7,6 +7,7 @@ import { generateStory } from '../services/api.js';
 import { addStory } from '../utils/storage.js';
 import { audioQueue } from '../utils/audioQueue.js';
 import { toast } from './Toast.js';
+import { storyTopics } from '../data/storyTopics.js';
 
 /**
  * Create and show the story generator modal
@@ -32,14 +33,19 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
             Topic / Theme
             <span class="form-label__required">*</span>
           </label>
-          <input 
-            type="text" 
-            id="topic" 
-            class="form-input" 
-            placeholder="e.g. A cat who loves sushi, A samurai's journey..."
-            required
-            maxlength="100"
-          >
+          <div class="input-with-action">
+            <input
+              type="text"
+              id="topic"
+              class="form-input"
+              placeholder="e.g. A cat who loves sushi, A samurai's journey..."
+              required
+              maxlength="100"
+            >
+            <button type="button" id="random-topic-btn" class="icon-btn random-btn" title="Get random topic">
+              🎲
+            </button>
+          </div>
           <div class="form-hint">What should the story be about?</div>
         </div>
         
@@ -161,6 +167,32 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
   // Event handlers
   cancelBtn.addEventListener('click', close);
   closeBtn.addEventListener('click', close);
+
+  // Random topic functionality
+  const randomTopicBtn = overlay.querySelector('#random-topic-btn');
+  const topicInput = overlay.querySelector('#topic');
+
+  randomTopicBtn.addEventListener('click', () => {
+    const randomIndex = Math.floor(Math.random() * storyTopics.length);
+    const selectedTopic = storyTopics[randomIndex];
+
+    // Animate through a few topics before settling
+    let shuffleCount = 0;
+    const maxShuffles = 8;
+    const shuffleInterval = setInterval(() => {
+      topicInput.value = storyTopics[Math.floor(Math.random() * storyTopics.length)];
+      shuffleCount++;
+
+      if (shuffleCount >= maxShuffles) {
+        clearInterval(shuffleInterval);
+        topicInput.value = selectedTopic;
+        // Trigger animation
+        randomTopicBtn.style.animation = 'none';
+        randomTopicBtn.offsetHeight; // Trigger reflow
+        randomTopicBtn.style.animation = 'diceRoll 0.5s ease-out';
+      }
+    }, 60);
+  });
 
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) close();
@@ -399,6 +431,61 @@ modalStyles.textContent = `
     font-size: var(--text-sm);
     color: var(--color-text-muted);
     margin-top: var(--space-1);
+  }
+
+  /* Random Topic Button */
+  .input-with-action {
+    display: flex;
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+
+  .input-with-action .form-input {
+    flex: 1;
+  }
+
+  .random-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    background: var(--color-bg-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--duration-fast);
+    user-select: none;
+  }
+
+  .random-btn:hover {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    transform: scale(1.05);
+  }
+
+  .random-btn:active {
+    transform: scale(0.95);
+  }
+
+  @keyframes diceRoll {
+    0% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(15deg) scale(1.1);
+    }
+    50% {
+      transform: rotate(-15deg) scale(1.1);
+    }
+    75% {
+      transform: rotate(5deg) scale(1.05);
+    }
+    100% {
+      transform: rotate(0deg) scale(1);
+    }
   }
 `;
 document.head.appendChild(modalStyles);
