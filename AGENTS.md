@@ -133,6 +133,55 @@ Enhanced hash-based router with:
 
 ---
 
+## 💡 Lessons Learned & Common Pitfalls
+
+### EventManager Migration (Jan 2026)
+
+**✅ What Worked Well:**
+
+- The codebase has **consistent component patterns**, making migration straightforward
+- AGENTS.md and ARCHITECTURE.md provided excellent context for understanding the system
+- Pre-commit hooks (eslint + prettier) caught issues early
+
+**⚠️ Common Pitfalls to Avoid:**
+
+1. **Dataset Only Stores Strings**
+   - ❌ `element.dataset.object = myObject` → Converts to `"[object Object]"`
+   - ✅ Use a separate `Map` or WeakMap for storing object references
+   - Example: `toastEventManagers.set(id, events)` instead of `toast.dataset.events = events`
+
+2. **Conditional Element Rendering**
+   - Always check for null when attaching listeners to conditionally rendered elements
+   - Use if-checks: `const btn = container.querySelector('#btn'); if (btn) events.on(btn, 'click', handler)`
+   - Common in components with `if (session) { ... }` patterns (Settings.js)
+
+3. **ESLint Case Declarations**
+   - Wrap lexical declarations in switch cases with braces
+   - ❌ `case 'foo': const x = 1;`
+   - ✅ `case 'foo': { const x = 1; }`
+
+4. **Unused Catch Variables**
+   - Use catch without parameter if error isn't used
+   - ❌ `} catch (e) { // e unused }`
+   - ✅ `} catch { // no parameter needed }`
+
+5. **Event Listener Cleanup**
+   - Old `addEventListener` calls MUST be removed when migrating to EventManager
+   - Don't leave duplicate code (both old + new patterns)
+
+6. **Inline Style Violations**
+   - Never use inline styles (violates design system principles)
+   - Replace with CSS classes: `.theme-icon--animating` instead of `style.transform = ...`
+
+**🎯 Development Best Practices:**
+
+- **Test early**: Start with simple components (Toast.js) to validate the pattern
+- **Build frequently**: Run `npm run build` to catch syntax errors before committing
+- **Check git diff**: Review staged changes to avoid duplicate code
+- **Null checks**: Always handle cases where `querySelector` returns null
+
+---
+
 ## 🚀 Future Roadmap & QoL Suggestions
 
 ### 🎨 UI/UX Enhancements
