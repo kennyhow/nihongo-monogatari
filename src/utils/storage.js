@@ -8,6 +8,13 @@ const STORAGE_KEYS = {
 import { supabase, getSession } from './supabase.js';
 import { toast } from '../components/Toast.js';
 
+/**
+ * @typedef {import('../types.js').UserSettings} UserSettings
+ * @typedef {import('../types.js').Story} Story
+ * @typedef {import('../types.js').StoryProgress} StoryProgress
+ * @typedef {import('../types.js').ApiKeys} ApiKeys
+ */
+
 // Theme
 export const getTheme = () => {
     return localStorage.getItem(STORAGE_KEYS.THEME) || 'light';
@@ -22,6 +29,10 @@ export const toggleTheme = () => {
 };
 
 // Settings
+/**
+ * Get user settings from localStorage
+ * @returns {UserSettings} User settings object with defaults applied
+ */
 export const getSettings = () => {
     const defaults = { fontSize: 'medium', showFurigana: true, viewMode: 'side-by-side' };
     try {
@@ -31,6 +42,11 @@ export const getSettings = () => {
     }
 };
 
+/**
+ * Save user settings to localStorage and sync to cloud
+ * @param {Partial<UserSettings>} settings - Settings to merge and save
+ * @returns {Promise<void>}
+ */
 export const saveSettings = async (settings) => {
     const current = getSettings();
     const updated = { ...current, ...settings };
@@ -50,6 +66,10 @@ export const saveSettings = async (settings) => {
 };
 
 // API Keys
+/**
+ * Get API keys from localStorage
+ * @returns {ApiKeys} API keys object
+ */
 export const getApiKeys = () => {
     const defaults = { google: '', pollinations: '' };
     try {
@@ -59,11 +79,19 @@ export const getApiKeys = () => {
     }
 };
 
+/**
+ * Save API keys to localStorage
+ * @param {ApiKeys} keys - API keys to save
+ */
 export const saveApiKeys = (keys) => {
     localStorage.setItem(STORAGE_KEYS.API_KEYS, JSON.stringify(keys));
 };
 
 // Stories
+/**
+ * Get all stored stories from localStorage
+ * @returns {Story[]} Array of story objects
+ */
 export const getStoredStories = () => {
     try {
         return JSON.parse(localStorage.getItem('nihongo_stories') || '[]');
@@ -72,6 +100,11 @@ export const getStoredStories = () => {
     }
 };
 
+/**
+ * Add a new story to storage and sync to cloud
+ * @param {Story} story - Story object to add
+ * @returns {Promise<void>}
+ */
 export const addStory = async (story) => {
     const stories = getStoredStories();
     stories.unshift(story);
@@ -91,6 +124,11 @@ export const addStory = async (story) => {
     }
 };
 
+/**
+ * Delete a story from storage and cloud
+ * @param {string} id - Story ID to delete
+ * @returns {Promise<void>}
+ */
 export const deleteStory = async (id) => {
     const stories = getStoredStories();
     const filtered = stories.filter(s => s.id !== id);
@@ -112,6 +150,13 @@ export const deleteStory = async (id) => {
 };
 
 // Progress
+/**
+ * Save reading progress for a story
+ * Automatically updates the lastRead timestamp
+ * @param {string} storyId - Story ID to save progress for
+ * @param {Partial<StoryProgress>} data - Progress data to update
+ * @returns {Promise<void>}
+ */
 export const saveProgress = async (storyId, data) => {
     const allProgress = getAllProgress();
     const updated = { ...allProgress[storyId], ...data, lastRead: Date.now() };
@@ -138,6 +183,11 @@ export const saveProgress = async (storyId, data) => {
     }
 };
 
+/**
+ * Get reading progress for a specific story
+ * @param {string} storyId - Story ID
+ * @returns {StoryProgress|null} Progress object or null if not found
+ */
 export const getStoryProgress = (storyId) => {
     const all = getAllProgress();
     return all[storyId] || null;

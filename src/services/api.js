@@ -1,8 +1,40 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createWavHeader, base64ToBytes } from '../utils/audioHelpers.js';
 import { getApiKeys } from '../utils/storage.js';
+import { STORY_LEVELS, STORY_LENGTHS, isValidStoryLevel, isValidStory } from '../types.js';
 
+/**
+ * Generate a Japanese story using Google Generative AI
+ *
+ * Creates an AI-generated story about a specified topic at the given JLPT level.
+ * The story includes Japanese text, furigana annotations, English translations,
+ * vocabulary notes, and comprehension questions.
+ *
+ * @param {string} topic - Story topic/theme (e.g., "A cat who loves sushi")
+ * @param {'N1' | 'N2' | 'N3' | 'N4' | 'N5' | 'Beginner' | 'Intermediate' | 'Advanced'} level - JLPT difficulty level or descriptor
+ * @param {string} [instructions=''] - Optional style/vocabulary instructions
+ * @param {'short' | 'medium' | 'long'} [length='medium'] - Target story length
+ * @returns {Promise<{id: string, titleJP: string, titleEN: string, level: string, readTime: number, excerpt: string, content: Array, questions: Array}>} Generated story object with ID added
+ * @throws {Error} If API key is missing, parameters are invalid, or generation fails
+ *
+ * @example
+ * const story = await generateStory('daily life', 'N4', 'make it funny', 'short');
+ * console.log(story.titleJP); // "日常の生活"
+ */
 export const generateStory = async (topic, level, instructions = '', length = 'medium') => {
+    // Input validation
+    if (!topic || typeof topic !== 'string') {
+        throw new Error('Topic must be a non-empty string');
+    }
+
+    if (!isValidStoryLevel(level)) {
+        throw new Error(`Invalid level: ${level}. Must be one of: ${STORY_LEVELS.join(', ')}`);
+    }
+
+    if (!STORY_LENGTHS.includes(length)) {
+        throw new Error(`Invalid length: ${length}. Must be one of: ${STORY_LENGTHS.join(', ')}`);
+    }
+
     const keys = getApiKeys();
     const API_KEY = keys.google || import.meta.env.VITE_GOOGLE_API_KEY;
 
@@ -84,6 +116,11 @@ export const generateStory = async (topic, level, instructions = '', length = 'm
         // Add ID
         storyData.id = `gen-${Date.now()}`;
 
+        // Output validation
+        if (!isValidStory(storyData)) {
+            throw new Error('Generated story has invalid structure');
+        }
+
         return storyData;
     } catch (error) {
         console.error("Generartion Error:", error);
@@ -91,6 +128,23 @@ export const generateStory = async (topic, level, instructions = '', length = 'm
     }
 };
 
+/**
+ * Generate text-to-speech audio using Google Generative AI
+ *
+ * Converts Japanese text to natural-sounding speech audio in WAV format.
+ * Uses the gemini-2.5-flash-preview-tts model with the "Aoede" voice.
+ *
+ * @param {string} text - Japanese text to convert to speech
+ * @returns {Promise<Blob|null>} WAV audio blob or null if generation fails
+ * @throws {Error} If API key is missing
+ *
+ * @example
+ * const audio = await generateSpeech('こんにちは');
+ * if (audio) {
+ *   const audioUrl = URL.createObjectURL(audio);
+ *   new Audio(audioUrl).play();
+ * }
+ */
 export const generateSpeech = async (text) => {
     const keys = getApiKeys();
     const API_KEY = keys.google || import.meta.env.VITE_GOOGLE_API_KEY;

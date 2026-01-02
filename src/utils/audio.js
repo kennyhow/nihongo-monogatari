@@ -7,14 +7,18 @@ const CACHE_NAME = 'nihongo-audio-v2';
 
 import { supabase, getSession } from './supabase.js';
 
+/**
+ * @typedef {import('../types.js').AudioState} AudioState
+ */
+
 // Track current playback state
 let currentAudio = null;
 let onFinishCallback = null;
 
 /**
  * Check if high-quality audio is cached for a story
- * @param {string} storyId 
- * @returns {Promise<boolean>}
+ * @param {string} storyId - Story ID to check
+ * @returns {Promise<boolean>} True if audio is cached
  */
 export const isAudioCached = async (storyId) => {
     if (!storyId) return false;
@@ -30,8 +34,8 @@ export const isAudioCached = async (storyId) => {
 };
 
 /**
- * Get audio state
- * @returns {Object} Current audio state
+ * Get current audio playback state
+ * @returns {AudioState} Current audio state
  */
 export const getAudioState = () => ({
     isPlaying: currentAudio && !currentAudio.paused,
@@ -41,10 +45,11 @@ export const getAudioState = () => ({
 
 /**
  * Play audio for a given text
- * Tries cache first, falls back to browser TTS
- * @param {string} text - Japanese text to play
- * @param {Function} onFinish - Called when playback completes
+ * Tries cache first, falls back to Supabase cloud storage
+ * @param {string} text - Japanese text to play (currently unused, kept for compatibility)
+ * @param {() => void} onFinish - Called when playback completes
  * @param {string} [storyId] - Optional story ID for cached audio lookup
+ * @returns {Promise<void>}
  */
 export const playAudio = async (text, onFinish, storyId = null) => {
     // Cancel any existing playback

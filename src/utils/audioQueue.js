@@ -1,6 +1,6 @@
 /**
  * Audio Queue Manager - Simplified for Whole-Story TTS
- * 
+ *
  * Instead of queuing individual sentences, we now queue entire stories
  * and generate one audio file per story. This reduces API calls from
  * ~10+ per story to just 1, avoiding rate limit issues.
@@ -8,6 +8,11 @@
 
 import { generateSpeech } from '../services/api.js';
 import { supabase, getSession } from './supabase.js';
+
+/**
+ * @typedef {import('../types.js').Story} Story
+ * @typedef {import('../types.js').AudioQueueItem} AudioQueueItem
+ */
 
 const CACHE_NAME = 'nihongo-audio-v2';
 const STORAGE_KEY = 'nihongo_audio_queue';
@@ -68,8 +73,9 @@ class AudioQueueManager {
 
     /**
      * Subscribe to queue updates
-     * @param {Function} callback - Called with queue array on changes
-     * @returns {Function} Unsubscribe function
+     * The callback is immediately invoked with current queue state
+     * @param {(queue: AudioQueueItem[]) => void} callback - Function called on queue changes
+     * @returns {() => void} Unsubscribe function to stop receiving updates
      */
     subscribe(callback) {
         this.subscribers.add(callback);
@@ -80,7 +86,7 @@ class AudioQueueManager {
 
     /**
      * Get current queue state
-     * @returns {Array} Copy of queue
+     * @returns {AudioQueueItem[]} Copy of queue array
      */
     getQueue() {
         return [...this.queue];
@@ -89,7 +95,7 @@ class AudioQueueManager {
     /**
      * Enqueue a story for TTS generation
      * Combines all segments into one text for single API call
-     * @param {Object} story - Story object with content array
+     * @param {Story} story - Story object with content array
      */
     enqueueStory(story) {
         if (!story?.id || !story?.content?.length) {
