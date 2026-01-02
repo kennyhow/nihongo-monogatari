@@ -93,6 +93,12 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           <button id="close-kana" class="btn btn--secondary btn--sm mt-4 w-full">Close</button>
         </div>
       </div>
+
+      <!-- Kana Pronunciation Tooltip -->
+      <div id="kana-tooltip" class="kana-tooltip hidden">
+        <span id="kana-tooltip-char" class="kana-tooltip-char"></span>
+        <span id="kana-tooltip-romaji" class="kana-tooltip-romaji"></span>
+      </div>
     `;
 
     updateHeader();
@@ -182,6 +188,79 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     if (!text) return '';
     // Wrap Hiragana (\u3040-\u309F) and Katakana (\u30A0-\u30FF)
     return text.replace(/([\u3040-\u309F\u30A0-\u30FF])/g, '<span class="kana-lookup" data-char="$1">$1</span>');
+  };
+
+  /**
+   * Find kana data by character
+   */
+  const findKanaData = (char) => {
+    const isKatakana = /[\u30A0-\u30FF]/.test(char);
+    const system = isKatakana ? 'katakana' : 'hiragana';
+    return KANA_DATA[system].find(item => item.kana === char);
+  };
+
+  /**
+   * Show/update kana tooltip
+   */
+  const showKanaTooltip = (char, x, y, isMobile = false) => {
+    const tooltip = container.querySelector('#kana-tooltip');
+    if (!tooltip) return;
+
+    const kanaData = findKanaData(char);
+    if (!kanaData) return;
+
+    // Update content
+    const charEl = tooltip.querySelector('#kana-tooltip-char');
+    const romajiEl = tooltip.querySelector('#kana-tooltip-romaji');
+    if (charEl) charEl.textContent = char;
+    if (romajiEl) romajiEl.textContent = kanaData.romaji;
+
+    // Position tooltip
+    tooltip.classList.remove('hidden');
+    tooltip.classList.toggle('kana-tooltip--mobile', isMobile);
+
+    if (isMobile) {
+      // Mobile: fixed at bottom center
+      tooltip.style.left = '';
+      tooltip.style.top = '';
+    } else {
+      // Desktop: position near cursor with offset
+      const offsetX = 12;
+      const offsetY = 12;
+
+      // Get tooltip dimensions for edge detection
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let posX = x + offsetX;
+      let posY = y + offsetY;
+
+      // Prevent right edge overflow
+      if (posX + tooltipRect.width > viewportWidth - 8) {
+        posX = x - tooltipRect.width - offsetX;
+      }
+
+      // Prevent bottom edge overflow
+      if (posY + tooltipRect.height > viewportHeight - 8) {
+        posY = y - tooltipRect.height - offsetY;
+      }
+
+      tooltip.style.left = `${posX}px`;
+      tooltip.style.top = `${posY}px`;
+    }
+  };
+
+  /**
+   * Hide kana tooltip
+   */
+  const hideKanaTooltip = () => {
+    const tooltip = container.querySelector('#kana-tooltip');
+    if (!tooltip) return;
+
+    tooltip.classList.add('hidden');
+    tooltip.style.left = '';
+    tooltip.style.top = '';
   };
 
   /**
@@ -293,14 +372,19 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       });
     });
 
-    // Hover lookup logic
+    // Hover lookup logic (desktop)
     const contentRoot = container.querySelector('#reader-content-root');
     contentRoot?.addEventListener('mouseover', (e) => {
       const target = e.target.closest('.kana-lookup');
-      const panel = container.querySelector('#kana-panel');
-      if (!target || panel?.classList.contains('hidden')) return;
+      if (!target) return;
 
       const char = target.dataset.char;
+      showKanaTooltip(char, e.clientX, e.clientY, false);
+
+      // Also highlight in kana panel if it's open
+      const panel = container.querySelector('#kana-panel');
+      if (panel?.classList.contains('hidden')) return;
+
       const isKatakana = /[\u30A0-\u30FF]/.test(char);
       const system = isKatakana ? 'katakana' : 'hiragana';
 
@@ -325,6 +409,76 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         }
       });
     });
+
+    // Update tooltip position on mouse move
+    contentRoot?.addEventListener('mousemove', (e) => {
+      const target = e.target.closest('.kana-lookup');
+      if (!target) {
+        hideKanaTooltip();
+        return;
+      }
+
+      const char = target.dataset.char;
+      showKanaTooltip(char, e.clientX, e.clientY, false);
+    });
+
+    // Hide tooltip on mouse out
+    contentRoot?.addEventListener('mouseout', (e) => {
+      const target = e.target.closest('.kana-lookup');
+      if (target) {
+        hideKanaTooltip();
+      }
+    });
+
+    // Mobile tap logic
+    contentRoot?.addEventListener('touchstart', (e) => {
+      const target = e.target.closest('.kana-lookup');
+      const tooltip = container.querySelector('#kana-tooltip');
+      const isTooltipVisible = !tooltip?.classList.contains('hidden');
+
+      if (target) {
+        // Tapping on a kana character
+        e.preventDefault(); // Prevent text selection and other default behaviors
+        const char = target.dataset.char;
+        const touch = e.touches[0];
+
+        // Toggle tooltip visibility
+        if (isTooltipVisible) {
+          hideKanaTooltip();
+        } else {
+          showKanaTooltip(char, touch.clientX, touch.clientY, true);
+
+          // Highlight in kana panel if open
+          const panel = container.querySelector('#kana-panel');
+          if (!panel?.classList.contains('hidden')) {
+            const isKatakana = /[\u30A0-\u30FF]/.test(char);
+            const system = isKatakana ? 'katakana' : 'hiragana';
+
+            if (system !== kanaSystem) {
+              kanaSystem = system;
+              container.querySelectorAll('.panel-toggle-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.sys === system);
+              });
+              renderPanelKana();
+            }
+
+            const cards = container.querySelectorAll('.panel-kana-card');
+            cards.forEach(card => {
+              const charEl = card.querySelector('.panel-kana-char');
+              if (charEl?.textContent === char) {
+                card.classList.add('highlight');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else {
+                card.classList.remove('highlight');
+              }
+            });
+          }
+        }
+      } else if (isTooltipVisible) {
+        // Tapping elsewhere while tooltip is visible - hide it
+        hideKanaTooltip();
+      }
+    }, { passive: false });
 
     container.querySelector('#toggle-side-by-side')?.addEventListener('change', (e) => {
       isSideBySide = e.target.checked;
@@ -521,9 +675,17 @@ readerStyles.textContent = `
   .panel-kana-char { font-size: var(--text-lg); font-weight: 600; }
   .panel-kana-romaji { font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; }
   
-  .kana-lookup { cursor: help; border-bottom: 1px dotted transparent; transition: all var(--duration-fast); }
+  .kana-lookup { cursor: pointer; border-bottom: 1px dotted transparent; transition: all var(--duration-fast); }
   .kana-lookup:hover { color: var(--color-primary); border-bottom-color: var(--color-primary); }
-  
+
+  /* Kana Pronunciation Tooltip */
+  .kana-tooltip { position: fixed; z-index: 300; pointer-events: none; background: var(--color-surface); border: 1px solid var(--color-primary); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: var(--space-2); animation: fadeIn 0.15s var(--ease-out); white-space: nowrap; }
+  .kana-tooltip.hidden { display: none; }
+  .kana-tooltip-char { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--color-text); }
+  .kana-tooltip-romaji { font-size: var(--text-sm); font-weight: 500; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .kana-tooltip--mobile { position: fixed; bottom: var(--space-8); left: 50% !important; transform: translateX(-50%); pointer-events: auto; padding: var(--space-3) var(--space-5); }
+  @media (hover: none) { .kana-tooltip { bottom: var(--space-8); left: 50% !important; transform: translateX(-50%); top: auto !important; pointer-events: auto; padding: var(--space-3) var(--space-5); } }
+
   /* Comprehension Styles */
   .reader__comprehension { margin-top: var(--space-12); padding-top: var(--space-8); border-top: 1px solid var(--color-border); }
   .comprehension__title { font-size: var(--text-2xl); margin-bottom: var(--space-6); text-align: center; }
