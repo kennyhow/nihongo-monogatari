@@ -1,0 +1,33 @@
+/* ============================================
+   DARK THEME
+   ============================================ */
+[data-theme='dark'] {
+  --color-primary: hsl(340, 70%, 60%);
+  --color-primary-hover: hsl(340, 70%, 55%);
+  --color-primary-light: hsl(340, 40%, 18%);
+  --color-primary-glow: hsla(340, 70%, 60%, 0.3);
+
+  --color-secondary: hsl(245, 65%, 65%);
+  --color-secondary-light: hsl(245, 30%, 20%);
+
+  --color-bg: hsl(220, 20%, 10%);
+  --color-bg-subtle: hsl(220, 18%, 13%);
+  --color-surface: hsl(220, 18%, 14%);
+  --color-surface-raised: hsl(220, 16%, 18%);
+  --color-surface-overlay: hsla(220, 18%, 14%, 0.95);
+
+  --color-text: hsl(220, 15%, 95%);
+  --color-text-secondary: hsl(220, 10%, 70%);
+  --color-text-muted: hsl(220, 8%, 55%);
+
+  --color-border: hsl(220, 15%, 22%);
+  --color-border-hover: hsl(220, 15%, 30%);
+
+  --color-success-light: hsl(152, 50%, 15%);
+  --color-warning-light: hsl(38, 50%, 15%);
+  --color-error-light: hsl(0, 50%, 15%);
+  --color-info-light: hsl(210, 50%, 15%);
+
+  --shadow-md: 0 4px 12px hsla(0, 0%, 0%, 0.3);
+  --shadow-lg: 0 8px 24px hsla(0, 0%, 0%, 0.4);
+}

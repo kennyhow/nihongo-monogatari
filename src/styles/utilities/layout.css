@@ -1,0 +1,36 @@
+/* ============================================
+   4. LAYOUT
+   ============================================ */
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container-xl);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: var(--space-8) var(--space-6);
+  }
+}
+
+main {
+  flex: 1;
+  animation: pageEnter var(--duration-slow) var(--ease-out);
+}
+
+footer {
+  text-align: center;
+  padding: var(--space-12) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-overlay);
+  backdrop-filter: blur(8px);
+}
