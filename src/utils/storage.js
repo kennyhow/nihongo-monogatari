@@ -152,6 +152,74 @@ const getAllProgress = () => {
 };
 
 /**
+ * Wipe all non-settings data (local + cloud) for the current user
+ * This deletes: stories, progress, cached images, cached audio
+ * This preserves: settings, theme, API keys
+ */
+export const wipeAllData = async () => {
+    try {
+        const session = await getSession();
+        const userId = session?.user.id;
+
+        // === WIPE LOCAL DATA ===
+
+        // 1. Clear stories from localStorage
+        localStorage.removeItem('nihongo_stories');
+
+        // 2. Clear progress from localStorage
+        localStorage.removeItem(STORAGE_KEYS.PROGRESS);
+
+        // 3. Clear image cache from Cache API
+        const imageCacheName = 'nihongo-images-v1';
+        await caches.delete(imageCacheName);
+
+        // 4. Clear all audio caches
+        const allCacheNames = await caches.keys();
+        const audioCacheNames = allCacheNames.filter(name => name.includes('audio'));
+        await Promise.all(audioCacheNames.map(name => caches.delete(name)));
+
+        // === WIPE CLOUD DATA (if authenticated) ===
+
+        if (session && supabase) {
+            // 5. Delete all stories for this user
+            const { error: storiesError } = await supabase
+                .from('stories')
+                .delete()
+                .eq('user_id', userId);
+
+            if (storiesError) console.warn('Failed to delete stories from cloud:', storiesError);
+
+            // 6. Delete all progress for this user
+            const { error: progressError } = await supabase
+                .from('progress')
+                .delete()
+                .eq('user_id', userId);
+
+            if (progressError) console.warn('Failed to delete progress from cloud:', progressError);
+
+            // 7. Delete all images from the image-cache bucket for this user
+            const { data: files, error: listError } = await supabase.storage
+                .from('image-cache')
+                .list(userId, { limit: 1000 });
+
+            if (!listError && files && files.length > 0) {
+                const filePaths = files.map(file => `${userId}/${file.name}`);
+                const { error: deleteError } = await supabase.storage
+                    .from('image-cache')
+                    .remove(filePaths);
+
+                if (deleteError) console.warn('Failed to delete some images from cloud:', deleteError);
+            }
+        }
+
+        return { success: true };
+    } catch (err) {
+        console.error('Wipe failed:', err);
+        return { success: false, error: err.message };
+    }
+};
+
+/**
  * Full Sync from Cloud
  */
 export const syncAll = async () => {

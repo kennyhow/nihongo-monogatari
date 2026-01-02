@@ -4,7 +4,7 @@
  * Refactored for modularity and better organization.
  */
 
-import { getSettings, saveSettings, getTheme, toggleTheme, getApiKeys, saveApiKeys, syncAll } from '../utils/storage.js';
+import { getSettings, saveSettings, getTheme, toggleTheme, getApiKeys, saveApiKeys, syncAll, wipeAllData } from '../utils/storage.js';
 import { toast } from '../components/Toast.js';
 import { clearImageCache, getCachedImageCount } from '../utils/imageStorage.js';
 import { supabase, signIn, signUp, signOut, getSession } from '../utils/supabase.js';
@@ -45,15 +45,15 @@ const Settings = (parentElement) => {
       </div>
     `;
 
+    // Auth check FIRST (before rendering data section)
+    session = await getSession();
+    renderSync();
+
     renderAppearance();
     renderReading();
     renderData();
     renderApi();
     renderAbout();
-
-    // Auth check
-    session = await getSession();
-    renderSync();
 
     parentElement.querySelector('#save-btn')?.addEventListener('click', handleSave);
   };
@@ -255,6 +255,16 @@ const Settings = (parentElement) => {
           </div>
           <button id="clear-images-btn" class="btn btn--ghost btn--sm" style="color: var(--color-error);">🗑️ Clear</button>
         </div>
+
+        ${session ? `
+        <div class="setting-item setting-item--danger" style="background: var(--color-error-light); padding: var(--space-4); border-radius: var(--radius-md); margin-top: var(--space-4);">
+          <div class="setting-item__info">
+            <h3 class="setting-item__label">Wipe All Data</h3>
+            <p class="setting-item__desc">Permanently delete ALL stories, progress, and cached images (local + cloud). Settings, theme, and API keys will be preserved.</p>
+          </div>
+          <button id="wipe-all-btn" class="btn btn--ghost btn--sm" style="color: var(--color-error); border: 1px solid var(--color-error);">☠️ Wipe All</button>
+        </div>
+        ` : ''}
       </section>
     `;
 
@@ -262,6 +272,7 @@ const Settings = (parentElement) => {
     root.querySelector('#import-input')?.addEventListener('change', handleImport);
     root.querySelector('#clear-cache-btn')?.addEventListener('click', handleClearAudio);
     root.querySelector('#clear-images-btn')?.addEventListener('click', handleClearImages);
+    root.querySelector('#wipe-all-btn')?.addEventListener('click', handleWipeAll);
   };
 
   /**
@@ -379,6 +390,40 @@ const Settings = (parentElement) => {
         toast.success('Image cache cleared');
         render();
       }
+    }
+  };
+
+  const handleWipeAll = async () => {
+    const confirmed = confirm(
+      '⚠️ DANGER ZONE ⚠️\n\n' +
+      'This will PERMANENTLY delete:\n' +
+      '• All stories (local + cloud)\n' +
+      '• All reading progress (local + cloud)\n' +
+      '• All cached images (local + cloud)\n' +
+      '• All cached audio (local)\n\n' +
+      'Your settings (theme, font size, preferences) and API keys will be preserved.\n\n' +
+      'This action CANNOT be undone. Are you sure?'
+    );
+
+    if (!confirmed) return;
+
+    const doubleConfirmed = confirm(
+      'Are you REALLY sure?\n\n' +
+      'This will delete ALL your data from everywhere.\n' +
+      'Type "OK" to confirm permanent deletion.'
+    );
+
+    if (!doubleConfirmed) return;
+
+    toast.info('Wiping all data...');
+    const result = await wipeAllData();
+
+    if (result.success) {
+      toast.success('☠️ All data wiped successfully!');
+      // Reload after a short delay to clear the UI
+      setTimeout(() => window.location.reload(), 1500);
+    } else {
+      toast.error(`Failed to wipe: ${result.error || 'Unknown error'}`);
     }
   };
 
