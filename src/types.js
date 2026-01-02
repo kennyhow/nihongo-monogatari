@@ -87,6 +87,7 @@ export const STORY_LENGTHS = ['short', 'medium', 'long'];
  * @typedef {Object} UserSettings
  * @property {FontSize} [fontSize='medium'] - Font size preference
  * @property {boolean} [showFurigana=true] - Whether to show furigana
+ * @property {boolean} [showEnglish=true] - Whether to show English translation
  * @property {ViewMode} [viewMode='side-by-side'] - Layout mode
  * @property {boolean} [showImages=true] - Whether to show generated images
  */

@@ -292,7 +292,7 @@ Shared Components
 
 #### Key Components
 
-**`src/components/Reader.js`** (24,373 bytes) - *Largest component*
+**`src/components/Reader.js`** (~24,373 bytes) - *Largest component*
 
 **Responsibilities:**
 - Renders story content with side-by-side translation
@@ -301,7 +301,10 @@ Shared Components
 - Audio playback controls
 - Image display
 - Furigana toggle
-- Font size controls
+- English translation toggle
+- Font size controls (medium/large)
+- Kana character pronunciation tooltips (hover/tap)
+- Enhanced settings panel with sections
 
 **State Management:**
 ```javascript
@@ -311,6 +314,10 @@ Shared Components
   isPlaying: Boolean,      // Audio playback state
   currentSentence: Number, // For sentence-by-sentence audio
   viewMode: String         // 'side-by-side' | 'paragraph'
+  showFurigana: Boolean    // Show furigana reading aid
+  showEnglish: Boolean     // Show English translation
+  showImages: Boolean      // Show AI-generated images
+  fontSize: String         // 'medium' | 'large'
 }
 ```
 

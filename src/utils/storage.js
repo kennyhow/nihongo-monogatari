@@ -34,7 +34,7 @@ export const toggleTheme = () => {
  * @returns {UserSettings} User settings object with defaults applied
  */
 export const getSettings = () => {
-    const defaults = { fontSize: 'medium', showFurigana: true, viewMode: 'side-by-side' };
+    const defaults = { fontSize: 'medium', showFurigana: true, showEnglish: true, viewMode: 'side-by-side' };
     try {
         return { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS) || '{}') };
     } catch {

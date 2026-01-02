@@ -17,6 +17,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   const settings = getSettings();
   let isSideBySide = settings.viewMode === 'side-by-side';
   let showFurigana = settings.showFurigana;
+  let showEnglish = settings.showEnglish !== false;
   let showImages = settings.showImages !== false;
   let fontSizeClass = settings.fontSize === 'large' ? 'reader--large' : '';
 
@@ -27,7 +28,6 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   let isHQAvailable = false;
   let playbackProgress = 0;
   let isLoadingImages = false;
-  let kanaSystem = 'hiragana';
 
   // Container element
   const container = document.createElement('div');
@@ -62,35 +62,63 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       <!-- Settings Panel -->
       <div id="settings-panel" class="settings-panel hidden">
         <div class="settings-panel__content">
-          <h3>Reading Settings</h3>
-          <label class="form-check">
-            <input type="checkbox" id="toggle-furigana" ${showFurigana ? 'checked' : ''}>
-            Show Furigana
-          </label>
-          <label class="form-check">
-            <input type="checkbox" id="toggle-side-by-side" ${isSideBySide ? 'checked' : ''}>
-            Side-by-Side View
-          </label>
-          <label class="form-check">
-            <input type="checkbox" id="toggle-images" ${showImages ? 'checked' : ''}>
-            Show Images
-          </label>
-          <button id="close-settings" class="btn btn--secondary btn--sm mt-4">Close</button>
-        </div>
-      </div>
+          <div class="settings-panel__header">
+            <h3>Reading Settings</h3>
+            <button id="close-settings" class="icon-btn">✕</button>
+          </div>
 
-      <!-- Kana Panel -->
-      <div id="kana-panel" class="kana-panel hidden">
-        <div class="kana-panel__content">
-          <div class="kana-panel__header">
-            <h3>Kana Chart</h3>
-            <div class="kana-panel__system-toggle">
-               <button class="panel-toggle-btn active" data-sys="hiragana">あ</button>
-               <button class="panel-toggle-btn" data-sys="katakana">ア</button>
+          <!-- Display Section -->
+          <div class="settings-section">
+            <h4 class="settings-section__title">Display</h4>
+            <label class="form-check">
+              <input type="checkbox" id="toggle-furigana" ${showFurigana ? 'checked' : ''}>
+              <div>
+                <span class="form-check__label">Show Furigana</span>
+                <span class="form-check__hint">Reading aid above kanji</span>
+              </div>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="toggle-english" ${showEnglish ? 'checked' : ''}>
+              <div>
+                <span class="form-check__label">Show English Translation</span>
+                <span class="form-check__hint">English text below Japanese</span>
+              </div>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="toggle-images" ${showImages ? 'checked' : ''}>
+              <div>
+                <span class="form-check__label">Show Images</span>
+                <span class="form-check__hint">AI-generated illustrations</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Layout Section -->
+          <div class="settings-section">
+            <h4 class="settings-section__title">Layout</h4>
+            <label class="form-check">
+              <input type="checkbox" id="toggle-side-by-side" ${isSideBySide ? 'checked' : ''}>
+              <div>
+                <span class="form-check__label">Side-by-Side View</span>
+                <span class="form-check__hint">Japanese and English together</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Font Size Section -->
+          <div class="settings-section">
+            <h4 class="settings-section__title">Text Size</h4>
+            <div class="font-size-controls">
+              <button class="font-size-btn ${!fontSizeClass ? 'active' : ''}" data-size="medium">
+                <span class="font-size-preview">A</span>
+                Medium
+              </button>
+              <button class="font-size-btn ${fontSizeClass === 'reader--large' ? 'active' : ''}" data-size="large">
+                <span class="font-size-preview large">A</span>
+                Large
+              </button>
             </div>
           </div>
-          <div id="panel-kana-grid" class="panel-kana-grid"></div>
-          <button id="close-kana" class="btn btn--secondary btn--sm mt-4 w-full">Close</button>
         </div>
       </div>
 
@@ -126,7 +154,6 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         </div>
         
         <div class="reader__controls">
-          <button id="kana-btn" class="icon-btn" title="Kana chart reference">🔤</button>
           <button id="settings-btn" class="icon-btn" title="Reading settings">⚙️</button>
           ${isPlaying ? `
             <button id="stop-btn" class="btn btn--secondary btn--sm">⏹ Stop</button>
@@ -152,7 +179,6 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     headerRoot.querySelector('#stop-btn')?.addEventListener('click', stopPlayback);
     headerRoot.querySelector('#play-hq-btn')?.addEventListener('click', startPlayback);
     headerRoot.querySelector('#settings-btn')?.addEventListener('click', toggleSettings);
-    headerRoot.querySelector('#kana-btn')?.addEventListener('click', toggleKanaPanel);
   };
 
   /**
@@ -281,7 +307,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
               ${wrapKana(showFurigana && segment.jp_furigana ? segment.jp_furigana : segment.jp)}
             </p>
           </div>
-          <div class="segment__en">
+          <div class="segment__en ${!showEnglish ? 'hidden' : ''}">
             <p>${segment.en}</p>
             ${segment.notes?.length > 0 ? `
               <div class="segment__notes">
@@ -360,7 +386,6 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     });
 
     container.querySelector('#close-settings')?.addEventListener('click', toggleSettings);
-    container.querySelector('#close-kana')?.addEventListener('click', toggleKanaPanel);
 
     container.querySelector('#toggle-furigana')?.addEventListener('change', (e) => {
       showFurigana = e.target.checked;
@@ -372,6 +397,13 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       });
     });
 
+    container.querySelector('#toggle-english')?.addEventListener('change', (e) => {
+      showEnglish = e.target.checked;
+      container.querySelectorAll('.segment__en').forEach(el => {
+        el.classList.toggle('hidden', !showEnglish);
+      });
+    });
+
     // Hover lookup logic (desktop)
     const contentRoot = container.querySelector('#reader-content-root');
     contentRoot?.addEventListener('mouseover', (e) => {
@@ -380,34 +412,6 @@ const Reader = ({ story, initialProgress, onComplete }) => {
 
       const char = target.dataset.char;
       showKanaTooltip(char, e.clientX, e.clientY, false);
-
-      // Also highlight in kana panel if it's open
-      const panel = container.querySelector('#kana-panel');
-      if (panel?.classList.contains('hidden')) return;
-
-      const isKatakana = /[\u30A0-\u30FF]/.test(char);
-      const system = isKatakana ? 'katakana' : 'hiragana';
-
-      // Switch system if needed
-      if (system !== kanaSystem) {
-        kanaSystem = system;
-        container.querySelectorAll('.panel-toggle-btn').forEach(b => {
-          b.classList.toggle('active', b.dataset.sys === system);
-        });
-        renderPanelKana();
-      }
-
-      // Highlight in grid
-      const cards = container.querySelectorAll('.panel-kana-card');
-      cards.forEach(card => {
-        const charEl = card.querySelector('.panel-kana-char');
-        if (charEl?.textContent === char) {
-          card.classList.add('highlight');
-          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-          card.classList.remove('highlight');
-        }
-      });
     });
 
     // Update tooltip position on mouse move
@@ -447,32 +451,6 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           hideKanaTooltip();
         } else {
           showKanaTooltip(char, touch.clientX, touch.clientY, true);
-
-          // Highlight in kana panel if open
-          const panel = container.querySelector('#kana-panel');
-          if (!panel?.classList.contains('hidden')) {
-            const isKatakana = /[\u30A0-\u30FF]/.test(char);
-            const system = isKatakana ? 'katakana' : 'hiragana';
-
-            if (system !== kanaSystem) {
-              kanaSystem = system;
-              container.querySelectorAll('.panel-toggle-btn').forEach(b => {
-                b.classList.toggle('active', b.dataset.sys === system);
-              });
-              renderPanelKana();
-            }
-
-            const cards = container.querySelectorAll('.panel-kana-card');
-            cards.forEach(card => {
-              const charEl = card.querySelector('.panel-kana-char');
-              if (charEl?.textContent === char) {
-                card.classList.add('highlight');
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              } else {
-                card.classList.remove('highlight');
-              }
-            });
-          }
         }
       } else if (isTooltipVisible) {
         // Tapping elsewhere while tooltip is visible - hide it
@@ -494,12 +472,22 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       if (showImages) loadImages();
     });
 
-    container.querySelectorAll('.panel-toggle-btn').forEach(btn => {
+    // Font size controls
+    container.querySelectorAll('.font-size-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        kanaSystem = e.target.dataset.sys;
-        container.querySelectorAll('.panel-toggle-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        renderPanelKana();
+        const size = e.currentTarget.dataset.size;
+        fontSizeClass = size === 'large' ? 'reader--large' : '';
+
+        // Update UI
+        container.querySelector('.reader').classList.toggle('reader--large', size === 'large');
+        container.querySelectorAll('.font-size-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.size === size);
+        });
+
+        // Save to storage
+        const settings = getSettings();
+        settings.fontSize = size;
+        saveSettings(settings);
       });
     });
 
@@ -528,27 +516,6 @@ const Reader = ({ story, initialProgress, onComplete }) => {
 
   const toggleSettings = () => {
     container.querySelector('#settings-panel')?.classList.toggle('hidden');
-  };
-
-  const toggleKanaPanel = () => {
-    const panel = container.querySelector('#kana-panel');
-    panel?.classList.toggle('hidden');
-    if (!panel?.classList.contains('hidden')) {
-      renderPanelKana();
-    }
-  };
-
-  const renderPanelKana = () => {
-    const grid = container.querySelector('#panel-kana-grid');
-    if (!grid) return;
-    grid.innerHTML = KANA_DATA[kanaSystem].map(item => `
-      <div class="panel-kana-card ${!item.kana ? 'empty' : ''}">
-        ${item.kana ? `
-          <div class="panel-kana-char">${item.kana}</div>
-          <div class="panel-kana-romaji">${item.romaji}</div>
-        ` : ''}
-      </div>
-    `).join('');
   };
 
   const startPlayback = () => {
@@ -660,21 +627,33 @@ readerStyles.textContent = `
   .reader__content--side-by-side .segment { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start; }
   @media (max-width: 768px) { .reader__content--side-by-side .segment { grid-template-columns: 1fr; } }
   .reader__footer { text-align: center; margin-top: var(--space-12); padding-top: var(--space-8); border-top: 1px solid var(--color-border); }
-  .settings-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; max-width: 100vw; background: var(--color-surface); border-left: 1px solid var(--color-border); box-shadow: var(--shadow-xl); z-index: 200; padding: var(--space-6); animation: slideInRight 0.3s var(--ease-out); }
+
+  /* Settings Panel Styles */
+  .settings-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 340px; max-width: 100vw; background: var(--color-surface); border-left: 1px solid var(--color-border); box-shadow: var(--shadow-xl); z-index: 200; padding: 0; animation: slideInRight 0.3s var(--ease-out); overflow-y: auto; }
   .settings-panel.hidden { display: none; }
-  .kana-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; max-width: 100vw; background: var(--color-surface); border-left: 1px solid var(--color-border); box-shadow: var(--shadow-xl); z-index: 200; padding: var(--space-4); animation: slideInRight 0.3s var(--ease-out); display: flex; flex-direction: column; }
-  .kana-panel.hidden { display: none; }
-  .kana-panel__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); }
-  .kana-panel__system-toggle { display: flex; background: var(--color-bg-subtle); padding: 2px; border-radius: var(--radius-md); }
-  .panel-toggle-btn { padding: var(--space-1) var(--space-3); border: none; background: none; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-sm); font-weight: 600; transition: all var(--duration-fast); }
-  .panel-toggle-btn.active { background: var(--color-surface); color: var(--color-primary); box-shadow: var(--shadow-sm); }
-  .panel-kana-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; overflow-y: auto; padding-right: var(--space-2); flex: 1; scroll-behavior: smooth; }
-  .panel-kana-card { background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-2) var(--space-1); text-align: center; transition: all var(--duration-fast); }
-  .panel-kana-card.empty { visibility: hidden; }
-  .panel-kana-card.highlight { background: var(--color-primary-light); border-color: var(--color-primary); transform: scale(1.05); box-shadow: var(--shadow-md); z-index: 1; }
-  .panel-kana-char { font-size: var(--text-lg); font-weight: 600; }
-  .panel-kana-romaji { font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; }
-  
+  .settings-panel__content { padding: var(--space-6); }
+  .settings-panel__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6); padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); }
+  .settings-panel__header h3 { margin: 0; font-size: var(--text-lg); }
+  .settings-section { margin-bottom: var(--space-6); }
+  .settings-section:last-child { margin-bottom: 0; }
+  .settings-section__title { font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); margin-bottom: var(--space-3); }
+
+  /* Enhanced form checks */
+  .form-check { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); cursor: pointer; transition: background var(--duration-fast); margin-bottom: var(--space-2); }
+  .form-check:hover { background: var(--color-bg-subtle); }
+  .form-check input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; }
+  .form-check div { flex: 1; }
+  .form-check__label { display: block; font-weight: 500; margin-bottom: 2px; }
+  .form-check__hint { display: block; font-size: var(--text-xs); color: var(--color-text-muted); }
+
+  /* Font size controls */
+  .font-size-controls { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+  .font-size-btn { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); cursor: pointer; transition: all var(--duration-fast); color: var(--color-text); }
+  .font-size-btn:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
+  .font-size-btn.active { border-color: var(--color-primary); background: var(--color-primary-light); font-weight: 600; }
+  .font-size-preview { font-size: var(--text-lg); line-height: 1; }
+  .font-size-preview.large { font-size: var(--text-2xl); }
+
   .kana-lookup { cursor: pointer; border-bottom: 1px dotted transparent; transition: all var(--duration-fast); }
   .kana-lookup:hover { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 
