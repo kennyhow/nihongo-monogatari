@@ -56,6 +56,7 @@ export const STORY_LENGTHS = ['short', 'medium', 'long'];
  * @property {string} jp - Plain Japanese text without ruby tags
  * @property {string} jp_furigana - Japanese text with <ruby> tags for furigana
  * @property {string} en - English translation
+ * @property {string} imagePrompt - Detailed visual description for AI image generation
  * @property {VocabularyNote[]} [notes] - Optional array of vocabulary notes
  */
 
@@ -177,7 +178,8 @@ export const isValidStory = (story) => {
   return story.content.every(segment =>
     typeof segment?.jp === 'string' &&
     typeof segment?.jp_furigana === 'string' &&
-    typeof segment?.en === 'string'
+    typeof segment?.en === 'string' &&
+    typeof segment?.imagePrompt === 'string'
   );
 };
 

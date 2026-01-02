@@ -55,53 +55,154 @@ export const generateStory = async (topic, level, instructions = '', length = 'm
     };
 
     const levelGuidelines = {
-        'N5': 'Use only basic grammar (desu/masu). Limit kanji to ~100 most common. Focus on daily life topics.',
-        'N4': 'Use elementary grammar (te-form, nai-form, tail-forms). Basic conjunctions. Daily routines and simple opinions.',
-        'N3': 'Natural, slightly more complex sentences. Broad topics like culture, news, and history. Use common intermediate grammar.',
-        'N2': 'Advanced vocabulary and natural expressions. Abstract topics. Complex sentence structures.',
-        'N1': 'Highly advanced/academic vocabulary. Nuanced expressions. Complex socio-cultural topics.'
+        'N5': `GRAMMAR: Use only polite form (desu/masu), present tense, simple sentences (subject-object-verb). Use wa/ga particles correctly.
+VOCABULARY: Restrict to JLPT N5 vocabulary list (~800 words). Use hiragana for words where kanji is uncommon.
+SENTENCE STRUCTURE: Keep sentences under 15 characters. Use simple conjunctions (soshite, demo).
+TOPICS: Daily life, family, food, school, hobbies. Concrete, familiar situations.
+CULTURAL CONTEXT: Include basic cultural elements like bowing, seasons, traditional foods.`,
+        'N4': `GRAMMAR: Use te-form, nai-form, dictionary form for short sentences. Basic conjunctions (kara, node, keredomo). Simple conditional (tara).
+VOCABULARY: Restrict to JLPT N4 vocabulary (~1,500 words). Introduce common kanji with furigana.
+SENTENCE STRUCTURE: Mix simple and compound sentences. 15-25 characters per sentence.
+TOPICS: Daily routines, past experiences, future plans, simple opinions, weather, travel.
+CULTURAL CONTEXT: Include customs, festivals, seasonal activities, social etiquette.`,
+        'N3': `GRAMMAR: Use intermediate patterns (naru, suru, hazu da, tokoro da). Quotations (to iu). Passive and causative forms.
+VOCABULARY: Use JLPT N3 vocabulary (~3,700 words). Balance kanji usage with appropriate furigana.
+SENTENCE STRUCTURE: Complex-compound sentences with multiple clauses. 20-35 characters per sentence.
+TOPICS: Culture, society, history, news summaries, work life, relationships, personal experiences.
+CULTURAL CONTEXT: Include cultural concepts like omotenashi, wa, honne/tatemae, seasonal references.`,
+        'N2': `GRAMMAR: Use advanced structures (mono da, wake ga nai, bakari ni). Formal register (keigo). Abstract expressions.
+VOCABULARY: Use JLPT N2 vocabulary (~6,000 words). Include idiomatic expressions and collocations.
+SENTENCE STRUCTURE: Sophisticated sentence patterns with embedding. 25-40 characters per sentence.
+TOPICS: Abstract concepts, social issues, business, literature, emotions, nuanced opinions.
+CULTURAL CONTEXT: Weave in cultural values, historical references, literary allusions, social dynamics.`,
+        'N1': `GRAMMAR: Use highly advanced patterns (ya inaya, zaru o enai, kerenai). Literary and academic register.
+VOCABULARY: Use JLPT N1 vocabulary (~10,000 words). Include four-character compounds (yojijukugo).
+SENTENCE STRUCTURE: Academic or literary style with complex embedding. 30-50 characters per sentence.
+TOPICS: Philosophy, economics, politics, academic subjects, complex social commentary.
+CULTURAL CONTEXT: Deep cultural analysis, historical context, literary references, nuanced social commentary.`
     };
 
-    const prompt = `
-    Task: Create a unique Japanese story about "${topic}" at JLPT ${level} level.
-    
-    Parameters:
-    - Level Guide: ${levelGuidelines[level] || 'Match the specified level.'}
-    - Target Length: ${lengthMap[length] || '10 sentences'}
-    ${instructions ? `- Specific Instructions: ${instructions}` : ''}
-    
-    Requirements:
-    1. Content: Engaging, culturally relevant, and educational.
-    2. Translations: Provide side-by-side English translations for every sentence.
-    3. Furigana: EVERY KANJI in "jp_furigana" MUST use <ruby> tags (e.g., <ruby>日本語<rt>にほんご</rt></ruby>).
-    4. Vocabulary: Include 2-3 key notes per segment.
-    5. Comprehension: Include 3 multiple-choice questions about the story.
-    
-    Output Format (STRICT JSON ONLY):
+    // Few-shot example to guide model output
+    const exampleOutput = `Example output for topic "A cat who loves sushi" at N4 level:
+
+{
+  "titleJP": "すし好きのねこ",
+  "titleEN": "The Sushi-Loving Cat",
+  "level": "N4",
+  "readTime": 3,
+  "excerpt": "A curious cat discovers a sushi restaurant and develops an unexpected friendship with the chef.",
+  "content": [
     {
-      "titleJP": "...",
-      "titleEN": "...",
-      "level": "${level}",
-      "readTime": 5,
-      "excerpt": "A short English summary.",
-      "content": [
-        {
-          "jp": "Plain Japanese sentence",
-          "jp_furigana": "Japanese sentence with <ruby> tags",
-          "en": "English translation",
-          "notes": [{ "term": "...", "meaning": "..." }]
-        }
-      ],
-      "questions": [
-        {
-          "question": "Question text in English",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "answer": "Correct Option Text",
-          "explanation": "Brief explanation in English why this is correct."
-        }
+      "jp": "ある日、白いねこがすし屋の前を歩きました。",
+      "jp_furigana": "<ruby>某日<rt>あるち</rt></ruby>、<ruby>白<rt>しろ</rt></ruby>いねこが<ruby>寿司<rt>すし</rt></ruby><ruby>屋<rt>や</rt></ruby>の<ruby>前<rt>まえ</rt></ruby>を<ruby>歩<rt>ある</rt></ruby>きました。",
+      "en": "One day, a white cat walked in front of a sushi restaurant.",
+      "imagePrompt": "A small white cat with curious eyes sitting in front of a traditional Japanese sushi restaurant with a noren curtain, warm afternoon sunlight, anime illustration style, soft pastel colors",
+      "notes": [
+        { "term": "ある日", "meaning": "One day (story starter)" },
+        { "term": "寿司屋", "meaning": "Sushi restaurant" }
       ]
     }
-  `;
+  ],
+  "questions": [
+    {
+      "question": "What did the cat discover?",
+      "options": ["A cat food store", "A sushi restaurant", "A fish market", "A park"],
+      "answer": "A sushi restaurant",
+      "explanation": "The story says the cat walked in front of a sushi restaurant (すし屋)."
+    }
+  ]
+}`;
+
+
+    const prompt = `
+Task: Create a unique, engaging Japanese story about "${topic}" at JLPT ${level} level.
+
+=== LEVEL GUIDELINES ===
+${levelGuidelines[level]}
+
+=== STORY PARAMETERS ===
+- Target Length: ${lengthMap[length]}
+${instructions ? `- Special Instructions: ${instructions}` : ''}
+
+=== QUALITY REQUIREMENTS ===
+
+STORY STRUCTURE:
+- Create a clear narrative arc: introduction (establish context), rising action, climax/resolution
+- Each segment should advance the story meaningfully
+- Build cultural authenticity through specific details and natural dialogue
+
+TRANSLATIONS:
+- Provide accurate, natural English translations that capture the nuance and tone
+- Maintain consistency in translation style throughout
+
+FURIGANA ANNOTATION:
+- EVERY kanji in "jp_furigana" must use <ruby> tags: <ruby>漢字<rt>かんじ</rt></ruby>
+- Include furigana for ALL kanji, even common ones
+- Verify all ruby tags are properly closed
+
+VOCABULARY NOTES:
+- Select 2-3 words per segment that match the target JLPT level
+- Prioritize words that help comprehension or are culturally significant
+- Provide clear, concise English definitions
+
+IMAGE PROMPTS:
+- For each segment, write a detailed visual description in English
+- Focus on: main subject(s), action/pose, setting/background, lighting/mood, art style
+- Keep descriptions anime/manga illustration style with soft colors
+- Ensure consistency in character appearance across segments
+- Format: "A [subject] [doing action] in [setting], [lighting/mood], [art style details]"
+
+COMPREHENSION QUESTIONS:
+- Create 3 multiple-choice questions that test understanding
+- Question distribution: 1 factual recall, 1 inference/understanding, 1 vocabulary-in-context
+- Provide 4 distinct options where only one is clearly correct
+- Include brief explanations that reinforce learning
+
+=== OUTPUT FORMAT ===
+Return STRICT JSON ONLY (no markdown, no explanation outside JSON):
+
+{
+  "titleJP": "Japanese title",
+  "titleEN": "English title translation",
+  "level": "${level}",
+  "readTime": <estimated minutes>,
+  "excerpt": "2-3 sentence English summary of the story",
+  "content": [
+    {
+      "jp": "Plain Japanese text",
+      "jp_furigana": "Japanese with <ruby> tags for ALL kanji",
+      "en": "English translation",
+      "imagePrompt": "Detailed visual description for AI image generation",
+      "notes": [
+        {"term": "Japanese word", "meaning": "English definition"}
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "question": "Question in English",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "answer": "Exact text of correct option",
+      "explanation": "Brief explanation why this is correct"
+    }
+  ]
+}
+
+=== SELF-VERIFICATION CHECKLIST ===
+Before returning your response, verify:
+[ ] All kanji have <ruby> tags in jp_furigana
+[ ] Each content segment has jp, jp_furigana, en, imagePrompt, and notes fields
+[ ] Vocabulary matches the JLPT ${level} level
+[ ] Story has ${lengthMap[length]} as specified
+[ ] Image prompts are detailed and consistent in style
+[ ] All 3 questions can be answered from the story text
+[ ] JSON is valid and properly formatted
+
+=== REFERENCE EXAMPLE ===
+${exampleOutput}
+
+Now generate the story about "${topic}" following all guidelines above.
+`;
 
     try {
         const result = await model.generateContent(prompt);

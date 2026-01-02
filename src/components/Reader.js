@@ -440,7 +440,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
 
           const apiKeys = getApiKeys();
           const apiKey = apiKeys.pollinations || import.meta.env.VITE_POLLINATIONS_AI_KEY;
-          const prompt = encodeURIComponent(`${story.content[i].jp}, anime style, soft colors`);
+          // Use dedicated imagePrompt if available, otherwise fall back to raw text
+          const imagePrompt = story.content[i].imagePrompt || `${story.content[i].jp}, anime style, soft colors`;
+          const prompt = encodeURIComponent(imagePrompt);
           const imageUrl = `https://gen.pollinations.ai/image/${prompt}?model=zimage`;
 
           const response = await fetch(imageUrl, {
