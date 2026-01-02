@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Cache
+.vite/
+coverage/
+
+# Generated files
+*.min.js
+*.min.css
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+*.log
