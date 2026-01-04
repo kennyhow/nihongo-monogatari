@@ -1357,6 +1357,376 @@ GEMINI_API_KEY=...                   # Gemini API (for story generation)
 
 ---
 
+## For AI Agents
+
+This section provides essential context for AI coding assistants working on this codebase.
+
+### Project Overview
+
+**Nihongo Monogatari** is a web application for learning Japanese through AI-generated stories with side-by-side translation and text-to-speech.
+
+**Tech Stack:**
+
+- **Framework**: Vanilla JavaScript + Vite
+- **Styling**: Vanilla CSS Design System (`src/styles/index.css`)
+- **AI Model**: Google Gemini (`gemini-2.5-flash-lite` for text, `gemini-2.5-flash-preview-tts` for audio)
+- **Backend**: Supabase (PostgreSQL + Edge Functions + Storage)
+- **Architecture**: Serverless background job system
+
+### Critical Architecture Patterns
+
+#### Component Lifecycle (`src/utils/componentBase.js`)
+
+```javascript
+// Always use cleanup functions to prevent memory leaks
+import { useCleanup } from '../utils/componentBase.js';
+
+const cleanup = useCleanup(element, () => {
+  subscription.unsubscribe();
+});
+
+// Router automatically calls cleanups on navigation
+```
+
+#### EventManager Pattern (`src/utils/eventManager.js`)
+
+```javascript
+import { createEventManager } from '../utils/componentBase.js';
+
+const events = createEventManager();
+events.on(button, 'click', handleClick);
+events.delegate(container, 'click', '.dynamic-button', handleDynamicClick);
+
+// Automatic cleanup via useCleanup
+useCleanup(element, events.cleanup.bind(events));
+```
+
+⚠️ **IMPORTANT**: Never use `addEventListener` directly. Always use EventManager for automatic cleanup.
+
+#### Background Job System
+
+- **Jobs table**: Database-backed queue (not in-memory)
+- **Trigger-based**: On-insert trigger fires job-worker immediately (1-3 seconds)
+- **Sequential processing**: One job at a time via database locking
+- **Client polling**: 3-second intervals via jobQueue.js subscription
+
+**Job Types:**
+
+- `story_generation`: Generate story content via Gemini API
+- `audio_generation`: Generate full-story audio via Gemini TTS
+- `image_generation`: (Future) Generate images via Pollinations AI
+
+### File Reference Tables
+
+#### Services
+
+| File                  | Purpose                                      | Critical Notes                         |
+| --------------------- | -------------------------------------------- | -------------------------------------- |
+| `src/services/api.js` | API wrappers for Supabase and Edge Functions | Uses bring-your-key model for API keys |
+
+#### Utilities
+
+| File                         | Purpose                            | Critical Notes                              |
+| ---------------------------- | ---------------------------------- | ------------------------------------------- |
+| `src/utils/componentBase.js` | Component lifecycle & EventManager | **ALWAYS use for event listeners**          |
+| `src/utils/router.js`        | Hash-based SPA router with cleanup | Auto-runs cleanups on navigation            |
+| `src/utils/storage.js`       | LocalStorage wrappers              | Stories, settings, progress                 |
+| `src/utils/audio.js`         | Audio playback with caching        | Checks browser cache, then Supabase Storage |
+| `src/utils/jobQueue.js`      | Job queue subscription manager     | Real-time UI updates for job status         |
+| `src/utils/supabase.js`      | Supabase client config             | Singleton instance                          |
+| `src/utils/audioQueue.js`    | **LEGACY** - Do not use            | Replaced by background job system           |
+
+#### Components
+
+| File                               | Purpose                        | Notes                          |
+| ---------------------------------- | ------------------------------ | ------------------------------ |
+| `src/components/Header.js`         | Nav, theme toggle, queue badge | -                              |
+| `src/components/StoryCard.js`      | Story preview card             | -                              |
+| `src/components/GeneratorModal.js` | Story creation form            | -                              |
+| `src/components/Reader.js`         | Main reading interface         | Auto-triggers audio generation |
+| `src/components/Toast.js`          | Notification system            | -                              |
+| `src/components/ProgressBar.js`    | Loading indicator              | -                              |
+
+#### Pages
+
+| File                     | Purpose                           | Notes             |
+| ------------------------ | --------------------------------- | ----------------- |
+| `src/pages/Home.js`      | Hero, stats, continue reading     | -                 |
+| `src/pages/Library.js`   | Search, filters, grid/list        | -                 |
+| `src/pages/Read.js`      | Story loader with continue prompt | -                 |
+| `src/pages/Queue.js`     | Job queue dashboard               | Real-time updates |
+| `src/pages/Settings.js`  | User preferences                  | -                 |
+| `src/pages/KanaChart.js` | Kana reference                    | -                 |
+
+### Common Pitfalls (From Experience)
+
+#### 1. EventManager & Memory Leaks
+
+**❌ Wrong:**
+
+```javascript
+document.addEventListener('click', handler); // Never cleaned up!
+```
+
+**✅ Right:**
+
+```javascript
+const events = createEventManager();
+events.on(document, 'click', handler);
+useCleanup(element, events.cleanup.bind(events));
+```
+
+#### 2. Dataset Storage Limitation
+
+**❌ Wrong:**
+
+```javascript
+element.dataset.object = myObject; // Becomes "[object Object]"
+```
+
+**✅ Right:**
+
+```javascript
+const storage = new Map();
+storage.set(element.id, myObject);
+useCleanup(element, () => storage.delete(element.id));
+```
+
+#### 3. Conditional Element Rendering
+
+**❌ Wrong:**
+
+```javascript
+const btn = container.querySelector('#maybe-exists');
+events.on(btn, 'click', handler); // Crashes if btn is null!
+```
+
+**✅ Right:**
+
+```javascript
+const btn = container.querySelector('#maybe-exists');
+if (btn) {
+  events.on(btn, 'click', handler);
+}
+```
+
+#### 4. Unused Catch Variables
+
+**❌ Wrong:**
+
+```javascript
+try { ... } catch (e) { /* e unused */ }
+```
+
+**✅ Right:**
+
+```javascript
+try { ... } catch { /* no parameter needed */ }
+```
+
+#### 5. Switch Case Declarations
+
+**❌ Wrong:**
+
+```javascript
+switch (x) {
+  case 'foo':
+    const y = 1; // SyntaxError in ESLint
+    break;
+}
+```
+
+**✅ Right:**
+
+```javascript
+switch (x) {
+  case 'foo': {
+    const y = 1;
+    break;
+  }
+}
+```
+
+#### 6. Inline Styles (Design System Violation)
+
+**❌ Wrong:**
+
+```javascript
+element.style.transform = 'rotate(180deg)';
+```
+
+**✅ Right:**
+
+```javascript
+element.classList.add('theme-icon--animating');
+// In CSS: .theme-icon--animating { transform: rotate(180deg); }
+```
+
+### Commit Message Standards
+
+Follow this format for consistency:
+
+```
+<type>: <short description>
+
+<optional longer description>
+
+<optional details about implementation>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+```
+
+**Types:**
+
+- `feat:` New feature (user-visible)
+- `fix:` Bug fix
+- `refactor:` Code change without feature/fix
+- `docs:` Documentation only
+- `style:` Formatting, linting
+- `test:` Adding/updating tests
+- `chore:` Build process, dependencies
+
+**Examples:**
+
+```
+feat: add dark mode toggle
+
+- Added theme toggle in Header component
+- Persist theme choice in localStorage
+- Updated all components to respect data-theme attribute
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+```
+
+```
+fix: prevent duplicate audio generation jobs
+
+- Added isAudioAvailable() to check database for existing jobs
+- Updated Reader.js to skip job creation if job already exists
+- Fixed race condition when reopening story page
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+```
+
+### Development Workflow
+
+1. **Read ARCHITECTURE.md** - Understand the system before making changes
+2. **Use existing patterns** - Don't reinvent, follow established conventions
+3. **Test incrementally** - Run `npm run build` frequently to catch errors
+4. **Check git diff** - Review staged changes before committing
+5. **Pre-commit hooks** - ESLint and Prettier run automatically (don't bypass)
+
+### Adding New Features
+
+**New Page:**
+
+1. Create `src/pages/NewPage.js` (function receiving `parentElement`)
+2. Add route in `src/utils/router.js`
+3. Add nav link in `src/components/Header.js`
+4. Return cleanup function if using subscriptions
+
+**New Component:**
+
+1. Use CSS classes from design system (no inline styles)
+2. Use EventManager for all event listeners
+3. Append styles via `document.head.appendChild()` if needed
+4. Use `useCleanup()` for subscriptions
+
+**New Job Type:**
+
+1. Add processor function in `supabase/functions/job-worker/index.ts`
+2. Add job type constant to `src/services/api.js`
+3. Update ARCHITECTURE.md job types table
+
+### Environment & Configuration
+
+**Client-side (Vite):**
+
+```bash
+VITE_SUPABASE_PUBLISHABLE_KEY=...    # Supabase anon key
+VITE_SUPABASE_URL=...                # Supabase endpoint
+```
+
+**Server-side (Supabase Edge Functions):**
+
+```bash
+GEMINI_API_KEY=...                   # User-provided (bring-your-key)
+CRON_SECRET=...                      # For job-worker authentication
+```
+
+⚠️ **IMPORTANT**: No hardcoded API keys. Users provide their own Gemini API key via Settings.
+
+### Key Constants
+
+```javascript
+// Storage Keys (src/utils/storage.js)
+STORAGE_KEYS = {
+  STORIES: 'nihongo_stories', // Array of story objects
+  PROGRESS: 'nihongo_progress', // Object: { storyId: completion% }
+  SETTINGS: 'nihongo_settings', // View mode, font size, etc.
+  THEME: 'nihongo_theme', // 'light' | 'dark'
+  API_KEYS: 'nihongo_api_keys', // User's Gemini API key
+};
+
+// JLPT Levels
+LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'];
+
+// View Modes
+VIEW_MODES = ['side-by-side', 'paragraph'];
+
+// Job Types
+JOB_TYPES = ['story_generation', 'audio_generation', 'image_generation'];
+
+// Job Statuses
+JOB_STATUS = ['pending', 'processing', 'completed', 'failed', 'cancelled'];
+```
+
+### Troubleshooting Common Issues
+
+#### ⚠️ CRITICAL: "Verify JWT with legacy secret" Setting
+
+**This is the #1 cause of 401 errors with Supabase Edge Functions!**
+
+If you're getting 401 "Invalid JWT" errors when calling Edge Functions:
+
+1. Go to **Supabase Dashboard** → **Settings** → **API**
+2. Find **"Verify JWT with legacy secret"** toggle
+3. Turn it **OFF** ❌ (if using new `sb_publishable_...` keys)
+4. Save/Apply changes
+
+**Why:** When using the new `publishable`/`secret` API keys, your project uses asymmetric JWT signing (JWKS). But if this setting is ON, Supabase tries to validate JWTs using the old JWT secret, causing 401 errors.
+
+#### Other Common Supabase Issues
+
+**401 Unauthorized with Edge Functions:**
+
+- Verify environment variables: `echo $VITE_SUPABASE_PUBLISHABLE_KEY` (should start with `sb_publishable_`)
+- Check `.env` file has correct format (no spaces around `=`)
+- Restart dev server after changing `.env`
+- Check Network tab: `apikey` header should start with `sb_publishable_`
+
+**Edge Function Not Responding:**
+
+- Check function is deployed: Dashboard → Edge Functions → your function
+- Check function logs in Dashboard → Edge Functions → Logs
+- Verify CORS headers include `apikey`
+- Make sure you're calling correct function URL
+
+**Job Stuck in "pending" Status:**
+
+- Check if `pg_net` extension is enabled: `SELECT * FROM pg_extension WHERE extname = 'pg_net';`
+- Check if trigger exists: `SELECT * FROM pg_trigger WHERE tgname = 'on_job_insert';`
+- Manually trigger worker: `SELECT trigger_all_pending_jobs();`
+- Check job-worker logs in Dashboard
+
+---
+
 _Last Updated: January 4, 2026 (On-Insert Job Trigger Implementation)_
 
 **Recent Changes:**
@@ -1410,5 +1780,3 @@ _Last Updated: January 4, 2026 (On-Insert Job Trigger Implementation)_
   - API keys moved to user-provided model (bring-your-key)
   - Added comprehensive documentation (EDGE_FUNCTION_SETUP.md, SUPABASE_API_KEY_MIGRATE.md)
   - See commit: `feat: migrate story generation to Supabase Edge Functions`
-
-_For AI Agent Context: See AGENTS.md_
