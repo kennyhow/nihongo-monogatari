@@ -36,24 +36,24 @@ Nihongo Monogatari is a **Single Page Application (SPA)** built with vanilla Jav
 **Key Changes:**
 
 - ✅ Story generation: Supabase Edge Functions (users can close browser)
-- ⚠️ Audio generation: Client-side (browser must stay open, TODO: migrate to Edge Functions)
+- ✅ Audio generation: Supabase Edge Functions (users can close browser) - **Completed January 4, 2026**
 - ⚠️ Image generation: Client-side (browser must stay open, lower priority)
 
 ### Service Architecture: Client vs Server
 
-| Service              | Location             | Model                          | Can Close Browser? | Status           |
-| -------------------- | -------------------- | ------------------------------ | ------------------ | ---------------- |
-| **Story Generation** | Background Job Queue | `gemini-2.5-flash-lite`        | ✅ Yes             | ✅ Implemented   |
-| **Audio Generation** | Client-side          | `gemini-2.5-flash-preview-tts` | ❌ No              | 🔴 High Priority |
-| **Image Generation** | Client-side          | `pollinations.ai (zimage)`     | ❌ No              | 🟡 Low Priority  |
+| Service              | Location             | Model                          | Can Close Browser? | Status          |
+| -------------------- | -------------------- | ------------------------------ | ------------------ | --------------- |
+| **Story Generation** | Background Job Queue | `gemini-2.5-flash-lite`        | ✅ Yes             | ✅ Implemented  |
+| **Audio Generation** | Background Job Queue | `gemini-2.5-flash-preview-tts` | ✅ Yes             | ✅ Implemented  |
+| **Image Generation** | Client-side          | `pollinations.ai (zimage)`     | ❌ No              | 🟡 Low Priority |
 
 **Future Migration Roadmap:**
 
-1. **Audio Generation** → Background Job Queue (High Impact)
-   - Users currently must keep browser open during 30s+ queue processing
-   - Rate limiting (30s intervals) managed client-side
-   - Use same job-creator/job-worker pattern as story generation
-   - Would complete the serverless architecture
+1. ✅ **Audio Generation** → Background Job Queue (Completed January 4, 2026)
+   - Users can now close browser during 30s+ queue processing
+   - Rate limiting (30s intervals) managed server-side
+   - Uses same job-creator/job-worker pattern as story generation
+   - Serverless architecture complete!
 
 2. **Image Generation** → Background Job Queue (Lower Impact)
    - Images load on-demand as user scrolls
@@ -1353,9 +1353,20 @@ GEMINI_API_KEY=...                   # Gemini API (for story generation)
 
 ---
 
-_Last Updated: January 4, 2026 (Implemented Background Job System)_
+_Last Updated: January 4, 2026 (Audio Generation Migration Complete)_
 
 **Recent Changes:**
+
+- **January 4, 2026 (Audio Generation Migration)**:
+  - ✅ **Migrated audio generation to background job system** - users can now close browser!
+  - ✅ **Implemented `processAudioGeneration()` in job-worker** Edge Function
+  - ✅ **Added `createAudioGenerationJob()` helper** in `src/services/api.js`
+  - ✅ **Updated Reader component** to auto-trigger audio generation when not cached
+  - ✅ **Audio stored in private Supabase Storage** (`audio-cache` bucket)
+  - ✅ **Uses authenticated downloads** (no public URLs - better security/privacy)
+  - ✅ **Rate limiting managed server-side** (30s delays between audio jobs)
+  - ✅ **Real-time UI updates** - Reader subscribes to job completion
+  - Serverless architecture is now complete!
 
 - **January 4, 2026 (Background Job System)**:
   - ✅ **Implemented database-backed job queue system**

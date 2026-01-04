@@ -33,6 +33,9 @@ const JOB_VALIDATORS = {
   },
 
   audio_generation: (data: any) => {
+    if (!data.userId || typeof data.userId !== 'string') {
+      throw new Error('userId is required and must be a string');
+    }
     if (!data.storyId || typeof data.storyId !== 'string') {
       throw new Error('storyId is required and must be a string');
     }

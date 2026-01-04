@@ -227,11 +227,164 @@ async function processStoryGeneration(parameters: any): Promise<any> {
 }
 
 /**
- * Process audio generation job (placeholder for future implementation)
+ * Process audio generation job
+ * Generates TTS audio using Gemini API and stores in Supabase Storage
  */
-async function processAudioGeneration(parameters: any): Promise<any> {
-  // TODO: Implement audio generation
-  throw new Error('Audio generation not yet implemented');
+async function processAudioGeneration(parameters: any, jobId: string): Promise<any> {
+  const { storyId, text, voiceName = 'Aoede', geminiApiKey } = parameters;
+
+  console.log(`[Job ${jobId}] Generating audio for story ${storyId}`);
+
+  // Initialize Generative AI with TTS model
+  const genAI = new GoogleGenerativeAI(geminiApiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash-preview-tts',
+    generationConfig: {
+      responseModalities: ['AUDIO'],
+      speechConfig: {
+        voiceConfig: { prebuiltVoiceConfig: { voiceName } },
+      },
+    },
+  });
+
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text }] }],
+    });
+
+    const response = await result.response;
+    const candidates = response.candidates;
+
+    if (!candidates || !candidates[0] || !candidates[0].content || !candidates[0].content.parts) {
+      throw new Error('No audio data in response');
+    }
+
+    let audioData: Uint8Array | null = null;
+    let sampleRate = 24000;
+
+    // Extract audio from response
+    for (const part of candidates[0].content.parts) {
+      if (
+        part.inlineData &&
+        part.inlineData.mimeType &&
+        part.inlineData.mimeType.startsWith('audio')
+      ) {
+        const mimeType = part.inlineData.mimeType;
+        const base64Data = part.inlineData.data;
+
+        // Parse sample rate from mime type
+        const rateMatch = mimeType.match(/rate=(\d+)/);
+        if (rateMatch) {
+          sampleRate = parseInt(rateMatch[1], 10);
+        }
+
+        // Convert base64 to Uint8Array
+        const binaryString = atob(base64Data);
+        const pcmBytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          pcmBytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create WAV header
+        const wavHeader = createWavHeader(pcmBytes.length, sampleRate);
+        const headerBytes = new Uint8Array(wavHeader);
+        const wavBytes = new Uint8Array(headerBytes.length + pcmBytes.length);
+
+        wavBytes.set(headerBytes, 0);
+        wavBytes.set(pcmBytes, headerBytes.length);
+
+        audioData = wavBytes;
+        break;
+      }
+    }
+
+    if (!audioData) {
+      throw new Error('Failed to extract audio data from response');
+    }
+
+    console.log(`[Job ${jobId}] Generated ${audioData.length} bytes of audio (${sampleRate}Hz)`);
+
+    // Get Supabase client for storage upload
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get user_id from parameters (passed from client when creating job)
+    const userId = parameters.userId;
+
+    if (!userId) {
+      throw new Error('userId is required for audio upload');
+    }
+
+    // Upload to Supabase Storage (private bucket)
+    // Using existing audio-cache bucket with user-specific path
+    const fileName = `${userId}/${storyId}/full-story.wav`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('audio-cache')
+      .upload(fileName, audioData, {
+        contentType: 'audio/wav',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload audio: ${uploadError.message}`);
+    }
+
+    console.log(`[Job ${jobId}] Audio uploaded: ${fileName}`);
+
+    // Return result (file path, not public URL - client will use authenticated download)
+    return {
+      audioPath: fileName, // Just the path, client will use authenticated Supabase client
+      format: 'wav',
+      size: audioData.length,
+      sampleRate: sampleRate,
+      duration: null, // Could calculate if needed
+    };
+  } catch (error: any) {
+    console.error(`[Job ${jobId}] Audio generation failed:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Create WAV header for PCM audio data
+ */
+function createWavHeader(pcmDataLength: number, sampleRate = 24000): ArrayBuffer {
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+
+  const buffer = new ArrayBuffer(44);
+  const view = new DataView(buffer);
+
+  const writeString = (view: DataView, offset: number, string: string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+
+  // "RIFF" chunk descriptor
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + pcmDataLength, true); // File size
+  writeString(view, 8, 'WAVE');
+
+  // "fmt " sub-chunk
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true); // Subchunk1Size
+  view.setUint16(20, 1, true); // AudioFormat (1 = PCM)
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+
+  // "data" sub-chunk
+  writeString(view, 36, 'data');
+  view.setUint32(40, pcmDataLength, true);
+
+  return buffer;
 }
 
 /**
@@ -243,8 +396,9 @@ async function processImageGeneration(parameters: any): Promise<any> {
 }
 
 // Job processors for each type
-const JOB_PROCESSORS: Record<string, (params: any) => Promise<any>> = {
-  story_generation: processStoryGeneration,
+// Pass both parameters and job ID to processors (needed for audio generation)
+const JOB_PROCESSORS: Record<string, (params: any, jobId: string) => Promise<any>> = {
+  story_generation: (params, _jobId) => processStoryGeneration(params),
   audio_generation: processAudioGeneration,
   image_generation: processImageGeneration,
 };
@@ -311,7 +465,7 @@ serve(async req => {
     let result;
 
     try {
-      result = await processor(job.parameters);
+      result = await processor(job.parameters, job.id);
 
       // Mark as completed
       await supabase

@@ -60,6 +60,59 @@ export const createStoryGenerationJob = async (
 };
 
 /**
+ * Create a background job for audio generation
+ *
+ * Queues an audio generation job that runs on the server.
+ * The user can close their browser while the job processes.
+ *
+ * @param {string} storyId - Story ID to generate audio for
+ * @param {string} text - Japanese text to convert to speech
+ * @param {string} [voiceName='Aoede'] - Voice name for TTS
+ * @returns {Promise<string>} Job ID
+ * @throws {Error} If parameters are invalid or API key is missing
+ *
+ * @example
+ * const jobId = await createAudioGenerationJob('story-123', 'こんにちは');
+ * console.log('Audio job queued:', jobId);
+ */
+export const createAudioGenerationJob = async (storyId, text, voiceName = 'Aoede') => {
+  const { jobQueue } = await import('../utils/jobQueue.js');
+  const { getSession } = await import('../utils/supabase.js');
+
+  // Input validation (keep this on client side for fast feedback)
+  if (!storyId || typeof storyId !== 'string') {
+    throw new Error('Story ID must be a non-empty string');
+  }
+
+  if (!text || typeof text !== 'string') {
+    throw new Error('Text must be a non-empty string');
+  }
+
+  // Get user's API key
+  const keys = getApiKeys();
+  const geminiApiKey = keys.google;
+
+  if (!geminiApiKey) {
+    throw new Error('Gemini API key not found. Please add your Google API key in Settings.');
+  }
+
+  // Get user session for userId
+  const session = await getSession();
+  if (!session?.user?.id) {
+    throw new Error('User not authenticated');
+  }
+
+  // Create the job
+  return await jobQueue.createJob('audio_generation', {
+    userId: session.user.id,
+    storyId,
+    text,
+    voiceName,
+    geminiApiKey,
+  });
+};
+
+/**
  * Generate a Japanese story using Supabase Edge Function
  *
  * Creates an AI-generated story about a specified topic at the given JLPT level.

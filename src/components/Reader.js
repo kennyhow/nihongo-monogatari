@@ -9,6 +9,7 @@ import { playAudio, cancelAudio, isAudioCached } from '../utils/audio.js';
 import { createEventManager } from '../utils/componentBase.js';
 import { KANA_DATA } from '../data/kana.js';
 import { getCachedImage, cacheImage } from '../utils/imageStorage.js';
+import { createAudioGenerationJob } from '../services/api.js';
 
 /**
  * Create the Reader component
@@ -685,10 +686,52 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     target.appendChild(img);
   };
 
-  // Check for audio availability and start
-  isAudioCached(story.id).then(available => {
-    isHQAvailable = available;
-    initializeLayout();
+  // Check for audio availability and trigger generation if needed
+  isAudioCached(story.id).then(async available => {
+    if (available) {
+      isHQAvailable = available;
+      initializeLayout();
+    } else {
+      // Audio not cached, trigger background generation
+      console.log('Audio not cached, triggering generation job...');
+
+      try {
+        // Combine all story text for audio generation
+        const fullText = story.content.map(segment => segment.jp).join('\n');
+
+        // Create background job for audio generation
+        await createAudioGenerationJob(story.id, fullText);
+
+        // Subscribe to job queue updates
+        const { jobQueue } = await import('../utils/jobQueue.js');
+        const unsubscribe = jobQueue.subscribe(jobs => {
+          // Check if our audio job completed
+          const audioJob = Array.from(jobs.values()).find(
+            job => job.parameters?.storyId === story.id && job.job_type === 'audio_generation'
+          );
+
+          if (audioJob?.status === 'completed' && audioJob.result?.audioPath) {
+            console.log('Audio generation complete!', audioJob.result.audioPath);
+
+            // Unsubscribe from further updates
+            unsubscribe();
+
+            // Update UI
+            isHQAvailable = true;
+            updateHeader();
+          }
+        });
+
+        // Initialize layout (will show loading state)
+        isHQAvailable = false;
+        initializeLayout();
+      } catch (error) {
+        console.error('Failed to trigger audio generation:', error);
+        // Still initialize layout, user can try again later
+        isHQAvailable = false;
+        initializeLayout();
+      }
+    }
   });
 
   return container;

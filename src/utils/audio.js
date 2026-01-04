@@ -93,9 +93,10 @@ export const playAudio = async (text, onFinish, storyId = null) => {
         return;
       }
 
-      // 2. Check Supabase Storage
+      // 2. Check Supabase Storage (from background job system)
       const session = await getSession();
       if (session) {
+        // Use the existing audio-cache bucket with user-specific path
         const filePath = `${session.user.id}/${storyId}/full-story.wav`;
         const { data, error } = await supabase.storage.from('audio-cache').download(filePath);
 
