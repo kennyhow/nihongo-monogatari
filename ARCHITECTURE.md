@@ -27,10 +27,13 @@ Nihongo Monogatari is a **Single Page Application (SPA)** built with vanilla Jav
 │                      SERVICES & INTEGRATIONS                 │
 │  ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐    │
 │  │ Gemini API   │  │  Supabase   │  │  Browser APIs    │    │
-│  │ (AI/TTS)     │  │ (Cloud Sync) │  │ (Cache/Speech)  │    │
-│  └──────────────┘  └─────────────┘  └──────────────────┘    │
+│  │ (AI/TTS)     │  │(Edge Fncts) │  │ (Cache/Speech)  │    │
+│  └──────────────┘  │ (Cloud Sync) │  └──────────────────┘    │
+│                   └─────────────┘                            │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Key Change:** Story generation now runs on Supabase Edge Functions, allowing users to close their browser during generation (~30-60 seconds).
 
 ---
 
@@ -282,7 +285,10 @@ export default function render(container) {
 
 ### 5. AI Integration System
 
-**Key File:** **`src/services/api.js`** (6,052 bytes)
+**Key Files:**
+
+- **`src/services/api.js`** - Client-side API calls and validation
+- **`supabase/functions/generate-story/index.ts`** - Server-side story generation
 
 #### Story Generation Flow
 
@@ -291,33 +297,45 @@ User fills GeneratorModal (level, topic, instructions)
     ↓
 submit → api.generateStory()
     ↓
-Construct prompt with:
-  - JLPT level constraints
-  - Topic requirements
-  - Special instructions
-  - Output format requirements
+Client-side validation (fast feedback)
     ↓
-Call Gemini: gemini-2.5-flash-lite
+Call Supabase Edge Function (async, can close browser!)
     ↓
-Parse JSON response
-    ↓
-Validate structure (japaneseText, englishText, vocabulary, etc.)
+Edge Function:
+  - Constructs prompt with:
+    - JLPT level constraints
+    - Topic requirements
+    - Special instructions
+    - Output format requirements
+  - Calls Gemini: gemini-2.5-flash-lite
+  - Parses JSON response
+  - Validates structure
     ↓
 Return story object → save to storage → redirect to Reader
 ```
 
+**Architecture Benefits:**
+
+- ✅ User can close browser during generation (~30-60 seconds)
+- ✅ API keys stored server-side (more secure)
+- ✅ Better rate limiting handling
+- ✅ Foundation for future queue system
+
 **API Endpoints Used:**
 
-1. **Text Generation:** `gemini-2.5-flash-lite`
+1. **Text Generation:** `gemini-2.5-flash-lite` (via Edge Function)
    - Generates Japanese stories + translations + vocab + questions
+   - Runs on Supabase Edge Functions (Deno runtime)
 
-2. **TTS Generation:** `gemini-2.5-flash-preview-tts`
+2. **TTS Generation:** `gemini-2.5-flash-preview-tts` (client-side)
    - Converts Japanese text to natural-sounding speech
    - Returns WAV audio data
+   - **TODO:** Migrate to Edge Function
 
 **Error Handling:**
 
-- API key validation on startup
+- Client-side validation for immediate feedback
+- Server-side validation and error handling in Edge Function
 - Graceful fallback to browser TTS
 - User-friendly error messages via Toast notifications
 
@@ -534,14 +552,19 @@ body { font-family: 'Inter', sans-serif; }
 │GeneratorModal│
 └──────┬──────┘
        ↓
-┌─────────────┐       ┌──────────────┐
-│ api.js      │──────→│ Gemini API   │
-│generateStory│       │ (Text Gen)   │
-└──────┬──────┘       └──────────────┘
+┌─────────────┐
+│ api.js      │
+│generateStory│
+└──────┬──────┘
        ↓
+┌─────────────┐       ┌──────────────────┐
+│Supabase Edge│──────→│ Gemini API       │
+│Function     │       │ (Text Gen)       │
+└──────┬──────┘       └──────────────────┘
+       ↓                    (can close browser!)
 ┌─────────────┐
 │ Story Object│
-│ (parsed)    │
+│ (from Edge) │
 └──────┬──────┘
        ↓
 ┌─────────────┐       ┌──────────────┐
@@ -637,35 +660,36 @@ body { font-family: 'Inter', sans-serif; }
 
 ## File Responsibility Matrix
 
-| File                                 | Primary Role                    | Dependencies                | Used By                                     |
-| ------------------------------------ | ------------------------------- | --------------------------- | ------------------------------------------- |
-| **src/main.js**                      | App entry point                 | router.js, Header           | Browser                                     |
-| **src/types.js**                     | Type definitions (JSDoc)        | None                        | api.js, storage.js, audio.js, audioQueue.js |
-| **src/utils/router.js**              | Hash routing, lazy loading      | componentBase.js            | All pages                                   |
-| **src/utils/componentBase.js**       | Component lifecycle             | eventManager.js             | router.js, all components                   |
-| **src/utils/eventManager.js**        | Event management, cleanup       | None                        | All components                              |
-| **src/utils/storage.js**             | Data persistence, Supabase sync | supabase.js                 | All components                              |
-| **src/utils/supabase.js**            | Supabase client config          | @supabase/supabase-js       | storage.js                                  |
-| **src/utils/audio.js**               | Audio playback                  | audioHelpers.js, storage.js | Reader.js                                   |
-| **src/utils/audioQueue.js**          | TTS generation queue            | api.js, storage.js          | GeneratorModal.js                           |
-| **src/utils/audioHelpers.js**        | WAV format utilities            | None                        | audio.js                                    |
-| **src/utils/imageStorage.js**        | Image caching                   | storage.js                  | Reader.js                                   |
-| **src/services/api.js**              | Gemini API calls                | @google/generative-ai       | audioQueue.js, GeneratorModal.js            |
-| **src/components/Header.js**         | Navigation, theme toggle        | router.js, storage.js       | All pages                                   |
-| **src/components/Reader.js**         | Story display, playback         | audio.js, storage.js        | Read page                                   |
-| **src/components/GeneratorModal.js** | Story creation form             | api.js, storage.js          | Header (global)                             |
-| **src/components/StoryCard.js**      | Story preview card              | storage.js                  | Home, Library                               |
-| **src/components/Toast.js**          | Notifications                   | eventManager.js             | All components                              |
-| **src/components/ProgressBar.js**    | Loading indicator               | None                        | All components                              |
-| **src/pages/Home.js**                | Landing page                    | StoryCard, storage.js       | router.js                                   |
-| **src/pages/Library.js**             | Story browser                   | StoryCard, storage.js       | router.js                                   |
-| **src/pages/Read.js**                | Story loader                    | Reader, storage.js          | router.js                                   |
-| **src/pages/Queue.js**               | TTS queue status                | audioQueue.js               | router.js                                   |
-| **src/pages/Settings.js**            | User preferences                | storage.js                  | router.js                                   |
-| **src/pages/KanaChart.js**           | Kana reference                  | data/kana.js                | router.js                                   |
-| **src/data/kana.js**                 | Kana character data             | None                        | KanaChart.js                                |
-| **src/styles/index.css**             | Design system                   | None                        | All components                              |
-| **index.html**                       | HTML entry point                | Google Fonts                | main.js                                     |
+| File                                   | Primary Role                    | Dependencies                | Used By                                     |
+| -------------------------------------- | ------------------------------- | --------------------------- | ------------------------------------------- |
+| **src/main.js**                        | App entry point                 | router.js, Header           | Browser                                     |
+| **src/types.js**                       | Type definitions (JSDoc)        | None                        | api.js, storage.js, audio.js, audioQueue.js |
+| **src/utils/router.js**                | Hash routing, lazy loading      | componentBase.js            | All pages                                   |
+| **src/utils/componentBase.js**         | Component lifecycle             | eventManager.js             | router.js, all components                   |
+| **src/utils/eventManager.js**          | Event management, cleanup       | None                        | All components                              |
+| **src/utils/storage.js**               | Data persistence, Supabase sync | supabase.js                 | All components                              |
+| **src/utils/supabase.js**              | Supabase client config          | @supabase/supabase-js       | storage.js                                  |
+| **src/utils/audio.js**                 | Audio playback                  | audioHelpers.js, storage.js | Reader.js                                   |
+| **src/utils/audioQueue.js**            | TTS generation queue            | api.js, storage.js          | GeneratorModal.js                           |
+| **src/utils/audioHelpers.js**          | WAV format utilities            | None                        | audio.js                                    |
+| **src/utils/imageStorage.js**          | Image caching                   | storage.js                  | Reader.js                                   |
+| **src/services/api.js**                | Client-side API calls           | @supabase/supabase-js       | audioQueue.js, GeneratorModal.js            |
+| **supabase/functions/generate-story/** | Server-side story generation    | @google/generative-ai       | api.js (via Supabase)                       |
+| **src/components/Header.js**           | Navigation, theme toggle        | router.js, storage.js       | All pages                                   |
+| **src/components/Reader.js**           | Story display, playback         | audio.js, storage.js        | Read page                                   |
+| **src/components/GeneratorModal.js**   | Story creation form             | api.js, storage.js          | Header (global)                             |
+| **src/components/StoryCard.js**        | Story preview card              | storage.js                  | Home, Library                               |
+| **src/components/Toast.js**            | Notifications                   | eventManager.js             | All components                              |
+| **src/components/ProgressBar.js**      | Loading indicator               | None                        | All components                              |
+| **src/pages/Home.js**                  | Landing page                    | StoryCard, storage.js       | router.js                                   |
+| **src/pages/Library.js**               | Story browser                   | StoryCard, storage.js       | router.js                                   |
+| **src/pages/Read.js**                  | Story loader                    | Reader, storage.js          | router.js                                   |
+| **src/pages/Queue.js**                 | TTS queue status                | audioQueue.js               | router.js                                   |
+| **src/pages/Settings.js**              | User preferences                | storage.js                  | router.js                                   |
+| **src/pages/KanaChart.js**             | Kana reference                  | data/kana.js                | router.js                                   |
+| **src/data/kana.js**                   | Kana character data             | None                        | KanaChart.js                                |
+| **src/styles/index.css**               | Design system                   | None                        | All components                              |
+| **index.html**                         | HTML entry point                | Google Fonts                | main.js                                     |
 
 ---
 
@@ -864,14 +888,25 @@ const THEMES = ['light', 'dark'];
 ### Environment Variables
 
 ```bash
-VITE_GOOGLE_API_KEY=...              # Gemini API
+# Frontend (client-side)
+VITE_GOOGLE_API_KEY=...              # Gemini API (legacy, for TTS only now)
 VITE_POLLINATIONS_AI_KEY=...         # Image generation
-SUPABASE_PROJECT_PASSWORD=...        # Supabase admin
-VITE_SUPABASE_PUBLISHABLE_KEY=...    # Supabase client
+VITE_SUPABASE_PUBLISHABLE_KEY=...    # Supabase client (new format: sb_publishable_...)
 VITE_SUPABASE_URL=...                # Supabase endpoint
+
+# Backend (Edge Functions - set in Supabase Dashboard)
+GEMINI_API_KEY=...                   # Gemini API (for story generation)
 ```
 
 ---
 
-_Last Updated: January 2, 2026 (Event Management System added)_
-_For AI Agent Context: See AGENTS.md_
+_Last Updated: January 4, 2026 (Edge Functions integration for story generation)_
+
+**Recent Changes:**
+
+- Migrated story generation from client-side to Supabase Edge Functions
+- Users can now close browser during story generation (~30-60 seconds)
+- API keys moved server-side for improved security
+- Added comprehensive documentation (EDGE_FUNCTION_SETUP.md, SUPABASE_API_KEY_MIGRATION.md)
+- See commit: `feat: migrate story generation to Supabase Edge Functions`
+  _For AI Agent Context: See AGENTS.md_
