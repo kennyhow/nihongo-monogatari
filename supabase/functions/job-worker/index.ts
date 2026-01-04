@@ -404,9 +404,24 @@ const JOB_PROCESSORS: Record<string, (params: any, jobId: string) => Promise<any
 };
 
 serve(async req => {
-  // Verify this is a cron job or authorized request
+  // Verify this is a cron job, trigger, or authorized request
   const authHeader = req.headers.get('Authorization');
   const cronSecret = Deno.env.get('CRON_SECRET');
+
+  // Detect invocation source for better logging
+  const invocationSource = req.headers.get('x-invocation-source') || 'unknown';
+  const userAgent = req.headers.get('user-agent') || '';
+
+  let source = 'unknown';
+  if (userAgent.includes('pg_net')) {
+    source = 'database-trigger';
+  } else if (invocationSource === 'cron') {
+    source = 'cron';
+  } else if (invocationSource === 'manual') {
+    source = 'manual';
+  }
+
+  console.log(`[Job Worker] Invoked from source: ${source}`);
 
   // Skip auth for testing (remove this in production!)
   // if (authHeader !== `Bearer ${cronSecret}`) {
@@ -445,8 +460,8 @@ serve(async req => {
       .single();
 
     if (error || !job) {
-      console.log('No jobs to process');
-      return new Response(JSON.stringify({ message: 'No jobs to process' }), {
+      console.log(`No jobs to process (source: ${source})`);
+      return new Response(JSON.stringify({ message: 'No jobs to process', source }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });

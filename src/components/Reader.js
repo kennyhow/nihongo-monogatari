@@ -5,11 +5,12 @@
  */
 
 import { saveProgress, getSettings, saveSettings, getApiKeys } from '../utils/storage.js';
-import { playAudio, cancelAudio, isAudioCached } from '../utils/audio.js';
+import { playAudio, cancelAudio, isAudioAvailable } from '../utils/audio.js';
 import { createEventManager } from '../utils/componentBase.js';
 import { KANA_DATA } from '../data/kana.js';
 import { getCachedImage, cacheImage } from '../utils/imageStorage.js';
 import { createAudioGenerationJob } from '../services/api.js';
+import { supabase } from '../utils/supabase.js';
 
 /**
  * Create the Reader component
@@ -687,47 +688,118 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   };
 
   // Check for audio availability and trigger generation if needed
-  isAudioCached(story.id).then(async available => {
+  isAudioAvailable(story.id).then(async available => {
     if (available) {
-      isHQAvailable = available;
+      // Check if there's a completed job (audio is ready)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { data: completedJob } = await supabase
+          .from('jobs')
+          .select('id, status, result')
+          .eq('user_id', user.id)
+          .eq('story_id', story.id)
+          .eq('job_type', 'audio_generation')
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (completedJob) {
+          // Audio is ready, cache it if needed and show button
+          if (completedJob.result?.audioPath) {
+            downloadAndCacheAudio(story.id, completedJob.result.audioPath).catch(err =>
+              console.warn('Failed to cache audio, but it should still play:', err)
+            );
+          }
+          isHQAvailable = true;
+          initializeLayout();
+          return;
+        }
+      }
+
+      // There's a pending/processing job, subscribe to updates
+      console.log('Audio job already in progress, waiting for completion...');
+
+      const { jobQueue } = await import('../utils/jobQueue.js');
+      const unsubscribe = jobQueue.subscribe(jobs => {
+        const audioJob = Array.from(jobs.values()).find(
+          job => job.parameters?.storyId === story.id && job.job_type === 'audio_generation'
+        );
+
+        if (audioJob?.status === 'completed' && audioJob.result?.audioPath) {
+          console.log(
+            'Audio generation complete! Downloading and caching...',
+            audioJob.result.audioPath
+          );
+
+          downloadAndCacheAudio(story.id, audioJob.result.audioPath)
+            .then(() => {
+              console.log('Audio downloaded and cached successfully');
+              unsubscribe();
+              isHQAvailable = true;
+              updateHeader();
+            })
+            .catch(error => {
+              console.error('Failed to download audio:', error);
+              isHQAvailable = true;
+              updateHeader();
+            });
+        } else if (audioJob?.status === 'failed') {
+          // Job failed, unsubscribe and let user try again later
+          console.error('Audio generation job failed:', audioJob.error_message);
+          unsubscribe();
+        }
+      });
+
+      // Show loading state while waiting
+      isHQAvailable = false;
       initializeLayout();
     } else {
-      // Audio not cached, trigger background generation
-      console.log('Audio not cached, triggering generation job...');
+      // No audio job exists, create one
+      console.log('Audio not available, triggering generation job...');
 
       try {
-        // Combine all story text for audio generation
         const fullText = story.content.map(segment => segment.jp).join('\n');
-
-        // Create background job for audio generation
         await createAudioGenerationJob(story.id, fullText);
 
         // Subscribe to job queue updates
         const { jobQueue } = await import('../utils/jobQueue.js');
         const unsubscribe = jobQueue.subscribe(jobs => {
-          // Check if our audio job completed
           const audioJob = Array.from(jobs.values()).find(
             job => job.parameters?.storyId === story.id && job.job_type === 'audio_generation'
           );
 
           if (audioJob?.status === 'completed' && audioJob.result?.audioPath) {
-            console.log('Audio generation complete!', audioJob.result.audioPath);
+            console.log(
+              'Audio generation complete! Downloading and caching...',
+              audioJob.result.audioPath
+            );
 
-            // Unsubscribe from further updates
+            downloadAndCacheAudio(story.id, audioJob.result.audioPath)
+              .then(() => {
+                console.log('Audio downloaded and cached successfully');
+                unsubscribe();
+                isHQAvailable = true;
+                updateHeader();
+              })
+              .catch(error => {
+                console.error('Failed to download audio:', error);
+                isHQAvailable = true;
+                updateHeader();
+              });
+          } else if (audioJob?.status === 'failed') {
+            console.error('Audio generation job failed:', audioJob.error_message);
             unsubscribe();
-
-            // Update UI
-            isHQAvailable = true;
-            updateHeader();
           }
         });
 
-        // Initialize layout (will show loading state)
+        // Show loading state
         isHQAvailable = false;
         initializeLayout();
       } catch (error) {
         console.error('Failed to trigger audio generation:', error);
-        // Still initialize layout, user can try again later
         isHQAvailable = false;
         initializeLayout();
       }
@@ -816,6 +888,48 @@ readerStyles.textContent = `
   @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 `;
+
+/**
+ * Download audio from Supabase Storage and cache it in browser cache
+ * @param {string} storyId - Story ID
+ * @param {string} audioPath - Path in Supabase Storage (e.g., userId/storyId/full-story.wav)
+ * @returns {Promise<void>}
+ */
+const downloadAndCacheAudio = async (storyId, audioPath) => {
+  try {
+    const cacheName = 'nihongo-audio-v2';
+    const cache = await caches.open(cacheName);
+    const cacheKey = `/audio/story-${storyId}`;
+
+    // Check if already cached
+    const existing = await cache.match(cacheKey);
+    if (existing) {
+      console.log('Audio already cached, skipping download');
+      return;
+    }
+
+    // Download from Supabase Storage
+    const { data, error } = await supabase.storage.from('audio-cache').download(audioPath);
+
+    if (error || !data) {
+      throw new Error(error?.message || 'Failed to download audio');
+    }
+
+    // Cache in browser
+    await cache.put(
+      cacheKey,
+      new Response(data, {
+        headers: { 'Content-Type': 'audio/wav' },
+      })
+    );
+
+    console.log(`Audio cached for story ${storyId}`);
+  } catch (error) {
+    console.error('Failed to download and cache audio:', error);
+    throw error;
+  }
+};
+
 document.head.appendChild(readerStyles);
 
 export default Reader;

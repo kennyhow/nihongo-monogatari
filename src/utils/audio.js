@@ -36,6 +36,52 @@ export const isAudioCached = async storyId => {
 };
 
 /**
+ * Check if audio is available (in browser cache OR Supabase Storage)
+ * This prevents duplicate job creation
+ * @param {string} storyId - Story ID to check
+ * @returns {Promise<boolean>} True if audio is available or being generated
+ */
+export const isAudioAvailable = async storyId => {
+  if (!storyId) {
+    return false;
+  }
+
+  // First check browser cache (fast)
+  const cached = await isAudioCached(storyId);
+  if (cached) {
+    return true;
+  }
+
+  // Then check if there's any audio generation job for this story
+  // (pending, processing, or completed)
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return false;
+    }
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('id, status')
+      .eq('user_id', user.id)
+      .eq('story_id', storyId)
+      .eq('job_type', 'audio_generation')
+      .in('status', ['pending', 'processing', 'completed'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // If there's any job (pending, processing, or completed), audio exists or is being generated
+    return !!data && !error;
+  } catch (e) {
+    console.warn('Failed to check for audio job:', e);
+    return false;
+  }
+};
+
+/**
  * Get current audio playback state
  * @returns {AudioState} Current audio state
  */

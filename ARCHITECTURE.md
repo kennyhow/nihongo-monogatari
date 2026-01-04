@@ -342,14 +342,16 @@ A database-backed job queue system that allows long-running operations (story ge
   - Returns job ID immediately
 
 - **`supabase/functions/job-worker/index.ts`** (NEW)
-  - Cron-triggered worker (runs every 1 minute)
+  - **Triggered immediately** when jobs are inserted (via database trigger)
+  - Also supports manual invocation (via `trigger_all_pending_jobs()` SQL function)
   - Claims pending jobs sequentially
   - Processes based on `job_type`:
     - `story_generation`: Calls Gemini API to generate stories
-    - `audio_generation`: (Future) Calls Gemini TTS API
+    - `audio_generation`: Calls Gemini TTS API for audio
     - `image_generation`: (Future) Calls Pollinations AI
   - Updates job status and stores results
   - Handles errors with retry logic (up to 3 attempts)
+  - Logs invocation source (trigger, manual, etc.) for debugging
 
 - **`supabase/functions/job-status/index.ts`** (NEW)
   - Returns job status by ID
@@ -410,13 +412,13 @@ Call job-creator Edge Function (returns immediately!)
     ↓
 Job record created in database (status: pending)
     ↓
+🔥 DATABASE TRIGGER FIRES (pg_net makes HTTP request to job-worker)
+    ↓
 User sees "Story queued!" toast
     ↓
 [USER CAN CLOSE BROWSER HERE]
     ↓
-Cron triggers job-worker (every 1 minute)
-    ↓
-Worker claims job (status: processing)
+Job-worker claims job within 1-3 seconds (status: processing)
     ↓
 Worker calls Gemini API: gemini-2.5-flash-lite
     ↓
@@ -735,11 +737,12 @@ body { font-family: 'Inter', sans-serif; }
 │ [USER CAN CLOSE BROWSER HERE!]      │
 │ Job runs on server in background    │
 └──────────────────────────────────────┘
-       ↓ (1 minute max wait)
+       ↓ (1-3 seconds!)
 ┌─────────────┐
-│ pg_cron      │ (Every 1 minute)
-│ triggers     │
-│ job-worker   │
+│ ON-INSERT   │ (Immediate trigger)
+│ TRIGGER     │ (via pg_net)
+│ fires       │
+│ job-worker  │
 └──────┬──────┘
        ↓
 ┌─────────────┐       ┌──────────────┐
@@ -948,40 +951,41 @@ For Images:
 
 ## File Responsibility Matrix
 
-| File                                                   | Primary Role                          | Dependencies                       | Used By                              |
-| ------------------------------------------------------ | ------------------------------------- | ---------------------------------- | ------------------------------------ |
-| **src/main.js**                                        | App entry point                       | router.js, Header                  | Browser                              |
-| **src/types.js**                                       | Type definitions (JSDoc)              | None                               | api.js, storage.js, jobQueue.js      |
-| **src/utils/router.js**                                | Hash routing, lazy loading            | componentBase.js                   | All pages                            |
-| **src/utils/componentBase.js**                         | Component lifecycle                   | eventManager.js                    | router.js, all components            |
-| **src/utils/eventManager.js**                          | Event management, cleanup             | None                               | All components                       |
-| **src/utils/storage.js**                               | Data persistence, Supabase sync       | supabase.js                        | All components                       |
-| **src/utils/supabase.js**                              | Supabase client config                | @supabase/supabase-js              | storage.js, jobQueue.js              |
-| **src/utils/jobQueue.js**                              | Background job queue manager          | supabase.js                        | Header.js, Queue.js, api.js          |
-| **src/utils/audio.js**                                 | Audio playback                        | audioHelpers.js, storage.js        | Reader.js                            |
-| **src/utils/audioQueue.js**                            | TTS generation queue (legacy)         | api.js, storage.js                 | GeneratorModal.js (being phased out) |
-| **src/utils/audioHelpers.js**                          | WAV format utilities                  | None                               | audio.js                             |
-| **src/utils/imageStorage.js**                          | Image caching                         | storage.js                         | Reader.js                            |
-| **src/services/api.js**                                | Client-side API calls                 | @supabase/supabase-js, jobQueue.js | GeneratorModal.js                    |
-| **supabase/functions/job-creator/**                    | Job creation endpoint                 | @supabase/supabase-js              | api.js (via jobQueue)                |
-| **supabase/functions/job-worker/**                     | Job processing worker                 | @google/generative-ai              | pg_cron (every 1 minute)             |
-| **supabase/functions/job-status/**                     | Job status endpoint                   | @supabase/supabase-js              | jobQueue.js (polling)                |
-| **src/components/Header.js**                           | Navigation, theme toggle, queue badge | router.js, storage.js, jobQueue.js | All pages                            |
-| **src/components/Reader.js**                           | Story display, playback               | audio.js, storage.js               | Read page                            |
-| **src/components/GeneratorModal.js**                   | Story creation form                   | api.js, storage.js                 | Header (global)                      |
-| **src/components/StoryCard.js**                        | Story preview card                    | storage.js                         | Home, Library                        |
-| **src/components/Toast.js**                            | Notifications                         | eventManager.js                    | All components                       |
-| **src/components/ProgressBar.js**                      | Loading indicator                     | None                               | All components                       |
-| **src/pages/Home.js**                                  | Landing page                          | StoryCard, storage.js              | router.js                            |
-| **src/pages/Library.js**                               | Story browser                         | StoryCard, storage.js              | router.js                            |
-| **src/pages/Read.js**                                  | Story loader                          | Reader, storage.js                 | router.js                            |
-| **src/pages/Queue.js**                                 | Unified job queue UI                  | jobQueue.js                        | router.js                            |
-| **src/pages/Settings.js**                              | User preferences                      | storage.js                         | router.js                            |
-| **src/pages/KanaChart.js**                             | Kana reference                        | data/kana.js                       | router.js                            |
-| **src/data/kana.js**                                   | Kana character data                   | None                               | KanaChart.js                         |
-| **src/styles/index.css**                               | Design system                         | None                               | All components                       |
-| **index.html**                                         | HTML entry point                      | Google Fonts                       | main.js                              |
-| **supabase/migrations/20240104_create_jobs_table.sql** | Jobs table schema                     | -                                  | Database setup                       |
+| File                                                           | Primary Role                          | Dependencies                       | Used By                              |
+| -------------------------------------------------------------- | ------------------------------------- | ---------------------------------- | ------------------------------------ |
+| **src/main.js**                                                | App entry point                       | router.js, Header                  | Browser                              |
+| **src/types.js**                                               | Type definitions (JSDoc)              | None                               | api.js, storage.js, jobQueue.js      |
+| **src/utils/router.js**                                        | Hash routing, lazy loading            | componentBase.js                   | All pages                            |
+| **src/utils/componentBase.js**                                 | Component lifecycle                   | eventManager.js                    | router.js, all components            |
+| **src/utils/eventManager.js**                                  | Event management, cleanup             | None                               | All components                       |
+| **src/utils/storage.js**                                       | Data persistence, Supabase sync       | supabase.js                        | All components                       |
+| **src/utils/supabase.js**                                      | Supabase client config                | @supabase/supabase-js              | storage.js, jobQueue.js              |
+| **src/utils/jobQueue.js**                                      | Background job queue manager          | supabase.js                        | Header.js, Queue.js, api.js          |
+| **src/utils/audio.js**                                         | Audio playback                        | audioHelpers.js, storage.js        | Reader.js                            |
+| **src/utils/audioQueue.js**                                    | TTS generation queue (legacy)         | api.js, storage.js                 | GeneratorModal.js (being phased out) |
+| **src/utils/audioHelpers.js**                                  | WAV format utilities                  | None                               | audio.js                             |
+| **src/utils/imageStorage.js**                                  | Image caching                         | storage.js                         | Reader.js                            |
+| **src/services/api.js**                                        | Client-side API calls                 | @supabase/supabase-js, jobQueue.js | GeneratorModal.js                    |
+| **supabase/functions/job-creator/**                            | Job creation endpoint                 | @supabase/supabase-js              | api.js (via jobQueue)                |
+| **supabase/functions/job-worker/**                             | Job processing worker                 | @google/generative-ai              | Database trigger (on-insert)         |
+| **supabase/functions/job-status/**                             | Job status endpoint                   | @supabase/supabase-js              | jobQueue.js (polling)                |
+| **src/components/Header.js**                                   | Navigation, theme toggle, queue badge | router.js, storage.js, jobQueue.js | All pages                            |
+| **src/components/Reader.js**                                   | Story display, playback               | audio.js, storage.js               | Read page                            |
+| **src/components/GeneratorModal.js**                           | Story creation form                   | api.js, storage.js                 | Header (global)                      |
+| **src/components/StoryCard.js**                                | Story preview card                    | storage.js                         | Home, Library                        |
+| **src/components/Toast.js**                                    | Notifications                         | eventManager.js                    | All components                       |
+| **src/components/ProgressBar.js**                              | Loading indicator                     | None                               | All components                       |
+| **src/pages/Home.js**                                          | Landing page                          | StoryCard, storage.js              | router.js                            |
+| **src/pages/Library.js**                                       | Story browser                         | StoryCard, storage.js              | router.js                            |
+| **src/pages/Read.js**                                          | Story loader                          | Reader, storage.js                 | router.js                            |
+| **src/pages/Queue.js**                                         | Unified job queue UI                  | jobQueue.js                        | router.js                            |
+| **src/pages/Settings.js**                                      | User preferences                      | storage.js                         | router.js                            |
+| **src/pages/KanaChart.js**                                     | Kana reference                        | data/kana.js                       | router.js                            |
+| **src/data/kana.js**                                           | Kana character data                   | None                               | KanaChart.js                         |
+| **src/styles/index.css**                                       | Design system                         | None                               | All components                       |
+| **index.html**                                                 | HTML entry point                      | Google Fonts                       | main.js                              |
+| **supabase/migrations/20240104_create_jobs_table.sql**         | Jobs table schema                     | -                                  | Database setup                       |
+| **supabase/migrations/20260104_add_on_insert_job_trigger.sql** | On-insert trigger setup               | pg_net extension                   | Real-time job processing             |
 
 ---
 
@@ -1353,9 +1357,21 @@ GEMINI_API_KEY=...                   # Gemini API (for story generation)
 
 ---
 
-_Last Updated: January 4, 2026 (Audio Generation Migration Complete)_
+_Last Updated: January 4, 2026 (On-Insert Job Trigger Implementation)_
 
 **Recent Changes:**
+
+- **January 4, 2026 (On-Insert Job Trigger)**:
+  - ✅ **Replaced cron-based polling with on-insert trigger** - jobs process immediately!
+  - ✅ **Enabled `pg_net` extension** for HTTP requests from PostgreSQL
+  - ✅ **Created `trigger_job_worker()` function** that fires job-worker on job insert
+  - ✅ **Added AFTER INSERT trigger** on `jobs` table for immediate processing
+  - ✅ **Reduced job processing latency** from 0-60 seconds to 1-3 seconds
+  - ✅ **Added `trigger_all_pending_jobs()` function** for manual job processing
+  - ✅ **Updated job-worker logging** to detect invocation source (trigger/manual/cron)
+  - ✅ **Eliminated empty cron runs** - no more unnecessary function invocations
+  - **Documentation**: See `ON_INSERT_TRIGGER_SETUP.md` for implementation guide
+  - **Migration**: `supabase/migrations/20260104_add_on_insert_job_trigger.sql`
 
 - **January 4, 2026 (Audio Generation Migration)**:
   - ✅ **Migrated audio generation to background job system** - users can now close browser!

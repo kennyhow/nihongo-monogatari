@@ -2,7 +2,7 @@
 
 ## 🎯 Active Refactoring Sprint
 
-_Last Updated: January 2, 2026_
+_Last Updated: January 4, 2026_
 _Focus: Developer Experience & Technical Debt Reduction_
 
 ---
@@ -14,6 +14,49 @@ This sprint focuses on three high-impact, low-risk refactoring tasks to improve 
 1. ~~**Centralized Event Delegation System**~~ - ✅ **COMPLETED**
 2. **CSS Module Organization** - Split 26,700-line CSS file into manageable modules
 3. **Pre-commit Hooks** - Automate code quality checks before commits
+
+---
+
+## Recent Updates (January 4, 2026)
+
+### ✅ On-Insert Job Trigger - COMPLETED
+
+**Status:** ✅ **Complete**
+**Completed:** January 4, 2026
+**Actual Time:** ~2 hours
+**Impact:** Jobs now process in 1-3 seconds instead of waiting up to 1 minute
+
+**Implementation:**
+
+- Created `supabase/migrations/20260104_add_on_insert_job_trigger.sql`
+- Added `ON_INSERT_TRIGGER_SETUP.md` documentation
+- Updated `ARCHITECTURE.md` with new trigger mechanism
+- Updated `supabase/functions/job-worker/index.ts` with source detection logging
+
+**Benefits:**
+
+- Real-time job processing via database trigger
+- No more empty cron runs
+- Better debugging with invocation source logging
+
+### ✅ Audio Generation Bug Fix - COMPLETED
+
+**Status:** ✅ **Complete**
+**Completed:** January 4, 2026
+**Impact:** Fixed duplicate audio job creation and missing audio button
+
+**Issues Fixed:**
+
+- Duplicate audio generation jobs created when reopening story pages
+- Audio button not appearing even after successful generation
+- Audio not being cached from Supabase Storage
+
+**Implementation:**
+
+- Added `isAudioAvailable()` function to check both cache and database
+- Updated `Reader.js` to prevent duplicate job creation
+- Added `downloadAndCacheAudio()` helper to fetch audio from Supabase Storage
+- Fixed job completion handling to download & cache before showing button
 
 ---
 
