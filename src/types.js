@@ -132,6 +132,39 @@ export const STORY_LENGTHS = ['short', 'medium', 'long'];
  * @property {string} [error] - Error message if status is 'error'
  */
 
+/**
+ * Background job object
+ * @typedef {Object} Job
+ * @property {string} id - UUID
+ * @property {'story_generation' | 'audio_generation' | 'image_generation'} job_type - Type of job
+ * @property {Object} parameters - Job input parameters (API keys, config, etc.)
+ * @property {'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'} status - Job status
+ * @property {Object} [result] - Job result data (when completed)
+ * @property {string} [error_message] - Error message (when failed)
+ * @property {Object} [error_details] - Detailed error info
+ * @property {number} retry_count - Number of retry attempts
+ * @property {number} max_retries - Maximum retry attempts allowed
+ * @property {string} created_at - ISO timestamp
+ * @property {string} [started_at] - ISO timestamp
+ * @property {string} [completed_at] - ISO timestamp
+ * @property {string} [estimated_completion_at] - ISO timestamp
+ * @property {string} user_id - User UUID
+ * @property {string} [story_id] - Related story ID
+ * @property {number} priority - Priority (lower = higher priority)
+ * @property {number} processing_attempts - Number of processing attempts
+ * @property {string} [last_heartbeat_at] - ISO timestamp
+ */
+
+/**
+ * Valid job types
+ * @typedef {'story_generation' | 'audio_generation' | 'image_generation'} JobType
+ */
+
+/**
+ * Valid job statuses
+ * @typedef {'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'} JobStatus
+ */
+
 // ============================================================================
 // VALIDATION UTILITIES
 // ============================================================================
@@ -141,7 +174,7 @@ export const STORY_LENGTHS = ['short', 'medium', 'long'];
  * @param {*} value - Value to validate
  * @returns {value is StoryLevel}
  */
-export const isValidStoryLevel = (value) => {
+export const isValidStoryLevel = value => {
   return STORY_LEVELS.includes(value);
 };
 
@@ -150,7 +183,7 @@ export const isValidStoryLevel = (value) => {
  * @param {*} value - Value to validate
  * @returns {value is FontSize}
  */
-export const isValidFontSize = (value) => {
+export const isValidFontSize = value => {
   return FONT_SIZES.includes(value);
 };
 
@@ -159,7 +192,7 @@ export const isValidFontSize = (value) => {
  * @param {*} value - Value to validate
  * @returns {value is ViewMode}
  */
-export const isValidViewMode = (value) => {
+export const isValidViewMode = value => {
   return VIEW_MODES.includes(value);
 };
 
@@ -168,19 +201,34 @@ export const isValidViewMode = (value) => {
  * @param {*} story - Story to validate
  * @returns {story is Story}
  */
-export const isValidStory = (story) => {
-  if (!story || typeof story !== 'object') return false;
-  if (typeof story.id !== 'string') return false;
-  if (typeof story.titleJP !== 'string') return false;
-  if (typeof story.titleEN !== 'string') return false;
-  if (!isValidStoryLevel(story.level)) return false;
-  if (typeof story.readTime !== 'number') return false;
-  if (!Array.isArray(story.content)) return false;
-  return story.content.every(segment =>
-    typeof segment?.jp === 'string' &&
-    typeof segment?.jp_furigana === 'string' &&
-    typeof segment?.en === 'string' &&
-    typeof segment?.imagePrompt === 'string'
+export const isValidStory = story => {
+  if (!story || typeof story !== 'object') {
+    return false;
+  }
+  if (typeof story.id !== 'string') {
+    return false;
+  }
+  if (typeof story.titleJP !== 'string') {
+    return false;
+  }
+  if (typeof story.titleEN !== 'string') {
+    return false;
+  }
+  if (!isValidStoryLevel(story.level)) {
+    return false;
+  }
+  if (typeof story.readTime !== 'number') {
+    return false;
+  }
+  if (!Array.isArray(story.content)) {
+    return false;
+  }
+  return story.content.every(
+    segment =>
+      typeof segment?.jp === 'string' &&
+      typeof segment?.jp_furigana === 'string' &&
+      typeof segment?.en === 'string' &&
+      typeof segment?.imagePrompt === 'string'
   );
 };
 
@@ -189,7 +237,9 @@ export const isValidStory = (story) => {
  * @param {*} keys - Keys to validate
  * @returns {keys is ApiKeys}
  */
-export const isValidApiKeys = (keys) => {
-  if (!keys || typeof keys !== 'object') return false;
+export const isValidApiKeys = keys => {
+  if (!keys || typeof keys !== 'object') {
+    return false;
+  }
   return typeof keys.google === 'string' && typeof keys.pollinations === 'string';
 };

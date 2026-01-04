@@ -4,7 +4,7 @@
  */
 
 import { getTheme, toggleTheme } from '../utils/storage.js';
-import { audioQueue } from '../utils/audioQueue.js';
+import { jobQueue } from '../utils/jobQueue.js';
 import { createEventManager } from '../utils/componentBase.js';
 
 const Header = parentElement => {
@@ -103,19 +103,17 @@ const Header = parentElement => {
     });
   };
 
-  // Subscribe to queue updates
+  // Subscribe to job queue updates
   try {
-    unsubscribe = audioQueue.subscribe(queue => {
-      const newCount = queue.filter(
-        item => item.status === 'pending' || item.status === 'processing'
-      ).length;
+    unsubscribe = jobQueue.subscribe(_jobs => {
+      const newCount = jobQueue.getPendingCount();
       if (newCount !== queueCount) {
         queueCount = newCount;
         render();
       }
     });
   } catch {
-    // audioQueue might not be initialized
+    // jobQueue might not be initialized
   }
 
   render();

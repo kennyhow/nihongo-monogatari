@@ -3,9 +3,7 @@
  * AI-powered story creation with preview and loading states
  */
 
-import { generateStory } from '../services/api.js';
-import { addStory } from '../utils/storage.js';
-import { audioQueue } from '../utils/audioQueue.js';
+import { createStoryGenerationJob } from '../services/api.js';
 import { toast } from './Toast.js';
 import { storyTopics } from '../data/storyTopics.js';
 import { createEventManager } from '../utils/componentBase.js';
@@ -14,10 +12,9 @@ import { createEventManager } from '../utils/componentBase.js';
  * Create and show the story generator modal
  * @param {Object} options
  * @param {Function} options.onClose - Called when modal closes
- * @param {Function} options.onGenerate - Called with new story after generation
  * @returns {HTMLElement} Modal overlay element
  */
-const GeneratorModal = ({ onClose, onGenerate }) => {
+const GeneratorModal = ({ onClose, onGenerate: _onGenerate }) => {
   // Create overlay
   const overlay = document.createElement('div');
   overlay.className = 'modal-backdrop';
@@ -229,30 +226,34 @@ const GeneratorModal = ({ onClose, onGenerate }) => {
     // Show loading state
     form.querySelectorAll('input, textarea').forEach(el => (el.disabled = true));
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="animate-spin">⏳</span> Generating...';
+    submitBtn.innerHTML = '<span class="animate-spin">⏳</span> Queuing...';
     loadingState.classList.remove('hidden');
 
     try {
-      const newStory = await generateStory(topic, level, instructions, length);
+      // Create job (returns immediately with job ID)
+      await createStoryGenerationJob(topic, level, instructions, length);
 
-      // Save to storage
-      await addStory(newStory);
+      // Show success message
+      toast.success('Story queued! You can close this page.');
 
-      // Queue for TTS generation
-      try {
-        audioQueue.enqueueStory(newStory);
-      } catch (err) {
-        console.warn('Failed to enqueue for TTS:', err);
-      }
+      // Update UI to show job is queued
+      submitBtn.innerHTML = '✓ Queued';
+      loadingState.innerHTML = `
+        <div class="generator-loading__spinner" style="border-top-color: var(--color-success);"></div>
+        <div class="generator-loading__text">
+          <strong>Story is being generated!</strong>
+          <p>Check the Queue page to track progress</p>
+        </div>
+      `;
 
-      // Success!
-      onGenerate(newStory);
-
-      // Close (will cleanup events automatically)
-      close();
+      // Navigate to Queue page after 2 seconds
+      setTimeout(() => {
+        window.location.hash = '#/queue';
+        close();
+      }, 2000);
     } catch (error) {
-      console.error('Generation failed:', error);
-      toast.error('Failed to generate story. Please check your API key and try again.');
+      console.error('Job creation failed:', error);
+      toast.error(`Failed to queue story: ${error.message}`);
 
       // Reset form
       form.querySelectorAll('input, textarea').forEach(el => (el.disabled = false));

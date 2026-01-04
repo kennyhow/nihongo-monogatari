@@ -1,31 +1,33 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createWavHeader, base64ToBytes } from '../utils/audioHelpers.js';
 import { getApiKeys } from '../utils/storage.js';
-import { supabase } from '../utils/supabase.js';
 import { STORY_LEVELS, STORY_LENGTHS, isValidStoryLevel, isValidStory } from '../types.js';
 
 /**
- * Generate a Japanese story using Supabase Edge Function
+ * Create a background job for story generation
  *
- * Creates an AI-generated story about a specified topic at the given JLPT level.
- * The story includes Japanese text, furigana annotations, English translations,
- * vocabulary notes, and comprehension questions.
- *
- * NOTE: This now calls a Supabase Edge Function instead of making direct API calls.
- * This allows the generation to continue even if you close your browser!
+ * Queues a story generation job that runs on the server.
+ * The user can close their browser while the job processes.
  *
  * @param {string} topic - Story topic/theme (e.g., "A cat who loves sushi")
- * @param {'N1' | 'N2' | 'N3' | 'N4' | 'N5' | 'Beginner' | 'Intermediate' | 'Advanced'} level - JLPT difficulty level or descriptor
+ * @param {'N1' | 'N2' | 'N3' | 'N4' | 'N5' | 'Beginner' | 'Intermediate' | 'Advanced'} level - JLPT difficulty level
  * @param {string} [instructions=''] - Optional style/vocabulary instructions
  * @param {'short' | 'medium' | 'long'} [length='medium'] - Target story length
- * @returns {Promise<{id: string, titleJP: string, titleEN: string, level: string, readTime: number, excerpt: string, content: Array, questions: Array}>} Generated story object with ID added
- * @throws {Error} If Supabase is not configured, parameters are invalid, or generation fails
+ * @returns {Promise<string>} Job ID
+ * @throws {Error} If parameters are invalid or API key is missing
  *
  * @example
- * const story = await generateStory('daily life', 'N4', 'make it funny', 'short');
- * console.log(story.titleJP); // "日常の生活"
+ * const jobId = await createStoryGenerationJob('daily life', 'N4', 'make it funny', 'short');
+ * console.log('Job queued:', jobId);
  */
-export const generateStory = async (topic, level, instructions = '', length = 'medium') => {
+export const createStoryGenerationJob = async (
+  topic,
+  level,
+  instructions = '',
+  length = 'medium'
+) => {
+  const { jobQueue } = await import('../utils/jobQueue.js');
+
   // Input validation (keep this on client side for fast feedback)
   if (!topic || typeof topic !== 'string') {
     throw new Error('Topic must be a non-empty string');
@@ -39,41 +41,76 @@ export const generateStory = async (topic, level, instructions = '', length = 'm
     throw new Error(`Invalid length: ${length}. Must be one of: ${STORY_LENGTHS.join(', ')}`);
   }
 
-  // Check if Supabase is configured
-  if (!supabase) {
-    throw new Error(
-      'Supabase is not configured. Please check your .env file for VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY'
-    );
+  // Get user's API key
+  const keys = getApiKeys();
+  const geminiApiKey = keys.google;
+
+  if (!geminiApiKey) {
+    throw new Error('Gemini API key not found. Please add your Google API key in Settings.');
   }
 
-  try {
-    // Call Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke('generate-story', {
-      body: { topic, level, instructions, length },
-    });
+  // Create the job
+  return await jobQueue.createJob('story_generation', {
+    topic,
+    level,
+    instructions,
+    length,
+    geminiApiKey,
+  });
+};
 
-    if (error) {
-      console.error('Edge Function error:', error);
-      throw new Error(error.message || 'Failed to generate story');
+/**
+ * Generate a Japanese story using Supabase Edge Function
+ *
+ * Creates an AI-generated story about a specified topic at the given JLPT level.
+ * The story includes Japanese text, furigana annotations, English translations,
+ * vocabulary notes, and comprehension questions.
+ *
+ * NOTE: For backward compatibility, this now creates a job and polls until complete.
+ * For new code, use createStoryGenerationJob() instead to avoid blocking.
+ *
+ * @param {string} topic - Story topic/theme (e.g., "A cat who loves sushi")
+ * @param {'N1' | 'N2' | 'N3' | 'N4' | 'N5' | 'Beginner' | 'Intermediate' | 'Advanced'} level - JLPT difficulty level or descriptor
+ * @param {string} [instructions=''] - Optional style/vocabulary instructions
+ * @param {'short' | 'medium' | 'long'} [length='medium'] - Target story length
+ * @returns {Promise<{id: string, titleJP: string, titleEN: string, level: string, readTime: number, excerpt: string, content: Array, questions: Array}>} Generated story object with ID added
+ * @throws {Error} If Supabase is not configured, parameters are invalid, or generation fails
+ *
+ * @example
+ * const story = await generateStory('daily life', 'N4', 'make it funny', 'short');
+ * console.log(story.titleJP); // "日常の生活"
+ */
+export const generateStory = async (topic, level, instructions = '', length = 'medium') => {
+  // For backward compatibility: Create job and poll until complete
+  const jobId = await createStoryGenerationJob(topic, level, instructions, length);
+
+  // Poll for completion (with timeout)
+  const { jobQueue } = await import('../utils/jobQueue.js');
+  const maxAttempts = 60; // 2 minutes max (60 * 2 seconds)
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+
+    const job = jobQueue.getJob(jobId);
+
+    if (job?.status === 'completed') {
+      // Job completed successfully
+      if (!job.result || !isValidStory(job.result)) {
+        throw new Error('Generated story has invalid structure');
+      }
+      return job.result;
     }
 
-    // Validate the response
-    if (!data || !isValidStory(data)) {
-      throw new Error('Generated story has invalid structure');
+    if (job?.status === 'failed') {
+      // Job failed
+      throw new Error(job.error_message || 'Story generation failed');
     }
 
-    return data;
-  } catch (error) {
-    // Provide helpful error messages for common issues
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      throw new Error(
-        'Network error: Unable to reach the story generation service. Please check your internet connection.'
-      );
-    }
-
-    console.error('Story generation error:', error);
-    throw error;
+    attempts++;
   }
+
+  throw new Error('Story generation timed out. Please check the Queue page for status.');
 };
 
 /**

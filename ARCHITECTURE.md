@@ -33,7 +33,33 @@ Nihongo Monogatari is a **Single Page Application (SPA)** built with vanilla Jav
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Key Change:** Story generation now runs on Supabase Edge Functions, allowing users to close their browser during generation (~30-60 seconds).
+**Key Changes:**
+
+- ✅ Story generation: Supabase Edge Functions (users can close browser)
+- ⚠️ Audio generation: Client-side (browser must stay open, TODO: migrate to Edge Functions)
+- ⚠️ Image generation: Client-side (browser must stay open, lower priority)
+
+### Service Architecture: Client vs Server
+
+| Service              | Location             | Model                          | Can Close Browser? | Status           |
+| -------------------- | -------------------- | ------------------------------ | ------------------ | ---------------- |
+| **Story Generation** | Background Job Queue | `gemini-2.5-flash-lite`        | ✅ Yes             | ✅ Implemented   |
+| **Audio Generation** | Client-side          | `gemini-2.5-flash-preview-tts` | ❌ No              | 🔴 High Priority |
+| **Image Generation** | Client-side          | `pollinations.ai (zimage)`     | ❌ No              | 🟡 Low Priority  |
+
+**Future Migration Roadmap:**
+
+1. **Audio Generation** → Background Job Queue (High Impact)
+   - Users currently must keep browser open during 30s+ queue processing
+   - Rate limiting (30s intervals) managed client-side
+   - Use same job-creator/job-worker pattern as story generation
+   - Would complete the serverless architecture
+
+2. **Image Generation** → Background Job Queue (Lower Impact)
+   - Images load on-demand as user scrolls
+   - Less disruptive if browser closes (reload on navigation)
+   - No apparent rate limiting issues
+   - Nice-to-have, but not critical
 
 ---
 
@@ -283,54 +309,191 @@ export default function render(container) {
 
 ---
 
-### 5. AI Integration System
+### 5. Background Job System
+
+**Entry Point:** `src/utils/jobQueue.js`
+
+**Implemented:** January 4, 2026
+
+A database-backed job queue system that allows long-running operations (story generation, audio generation, image generation) to run on the server. Users can close their browser and come back later to see completed work.
 
 **Key Files:**
 
-- **`src/services/api.js`** - Client-side API calls and validation
-- **`supabase/functions/generate-story/index.ts`** - Server-side story generation
+- **`src/utils/jobQueue.js`** (NEW - ~300 lines)
+  - Client-side job queue manager with polling and localStorage backup
+  - `createJob()`: Queue a new job for processing
+  - `retryJob()`: Retry failed jobs
+  - `cancelJob()`: Cancel pending jobs
+  - `subscribe()`: Observer pattern for real-time UI updates
+  - Polls database every 3 seconds for job status changes
 
-#### Story Generation Flow
+- **`src/services/api.js`** (MODIFIED)
+  - `createStoryGenerationJob()`: Queue a story generation job
+  - `generateStory()`: Backward-compatible wrapper that polls until complete
+
+- **`supabase/migrations/20240104_create_jobs_table.sql`** (NEW)
+  - Database schema for job storage
+  - Row Level Security (RLS) policies
+  - Performance indexes
+
+- **`supabase/functions/job-creator/index.ts`** (NEW)
+  - Validates job parameters
+  - Creates job records in database
+  - Returns job ID immediately
+
+- **`supabase/functions/job-worker/index.ts`** (NEW)
+  - Cron-triggered worker (runs every 1 minute)
+  - Claims pending jobs sequentially
+  - Processes based on `job_type`:
+    - `story_generation`: Calls Gemini API to generate stories
+    - `audio_generation`: (Future) Calls Gemini TTS API
+    - `image_generation`: (Future) Calls Pollinations AI
+  - Updates job status and stores results
+  - Handles errors with retry logic (up to 3 attempts)
+
+- **`supabase/functions/job-status/index.ts`** (NEW)
+  - Returns job status by ID
+  - Used for status polling
+
+- **`src/pages/Queue.js`** (MAJOR REFACTOR)
+  - Unified UI for all job types
+  - Filter by status (All, Pending, Processing, Completed, Failed)
+  - Retry/cancel buttons
+  - Real-time updates via jobQueue subscription
+
+#### Job Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    JOB LIFECYCLE                            │
+└─────────────────────────────────────────────────────────────┘
+
+1. PENDING (⏳)
+   - Job created, waiting to be processed
+   - User can cancel
+   - Stored in database with created_at timestamp
+
+2. PROCESSING (🔄)
+   - Worker has claimed the job
+   - API calls in progress
+   - started_at timestamp set
+   - Cannot be cancelled (must finish or fail)
+
+3. COMPLETED (✓)
+   - Job finished successfully
+   - Result stored in database
+   - Auto-saved to appropriate storage (Library, Cache, etc.)
+   - User gets toast notification
+   - completed_at timestamp set
+
+4. FAILED (✕)
+   - Job encountered error
+   - error_message and error_details stored
+   - Can be retried (up to max_retries)
+   - User sees error message and retry button
+
+5. CANCELLED (🚫)
+   - User cancelled pending job
+   - No further processing
+```
+
+#### Story Generation Flow (Updated)
 
 ```
 User fills GeneratorModal (level, topic, instructions)
     ↓
-submit → api.generateStory()
+submit → createStoryGenerationJob()
     ↓
 Client-side validation (fast feedback)
     ↓
-Call Supabase Edge Function (async, can close browser!)
+Call job-creator Edge Function (returns immediately!)
     ↓
-Edge Function:
-  - Constructs prompt with:
-    - JLPT level constraints
-    - Topic requirements
-    - Special instructions
-    - Output format requirements
-  - Calls Gemini: gemini-2.5-flash-lite
-  - Parses JSON response
-  - Validates structure
+Job record created in database (status: pending)
     ↓
-Return story object → save to storage → redirect to Reader
+User sees "Story queued!" toast
+    ↓
+[USER CAN CLOSE BROWSER HERE]
+    ↓
+Cron triggers job-worker (every 1 minute)
+    ↓
+Worker claims job (status: processing)
+    ↓
+Worker calls Gemini API: gemini-2.5-flash-lite
+    ↓
+Story generated, parsed, validated
+    ↓
+Job record updated with result (status: completed)
+    ↓
+Client polling detects completion
+    ↓
+Story auto-saved to Library
+    ↓
+User gets "Story ready!" toast
+    ↓
+User can read story immediately!
 ```
 
 **Architecture Benefits:**
 
-- ✅ User can close browser during generation (~30-60 seconds)
-- ✅ API keys stored server-side (more secure)
-- ✅ Better rate limiting handling
-- ✅ Foundation for future queue system
+- ✅ **User can close browser** during generation (jobs run on server)
+- ✅ **Sequential processing** (one job at a time, respects rate limits)
+- ✅ **Manual retry** for failed jobs
+- ✅ **LocalStorage backup** for offline capability
+- ✅ **Real-time UI updates** (3-second polling)
+- ✅ **Unified queue** for all job types
+- ✅ **Extensible** - easy to add new job types
+
+**Rate Limiting Strategy:**
+
+Jobs process **sequentially** (one at a time):
+
+- Prevents API rate limit issues
+- No parallel execution
+- 30-second delays between audio generation jobs (when implemented)
+
+**Security:**
+
+- User's own API key (bring-your-key model)
+- Key passed in job parameters
+- Not stored permanently in database (deleted with job)
+- RLS ensures users can only see their own jobs
+
+**Performance:**
+
+- Polling every 3 seconds (can upgrade to Supabase Realtime for instant updates)
+- Database indexes on `user_id`, `status`, `created_at`
+- LocalStorage backup for fast initial load
+- Keeps only last 20 completed/failed jobs in memory
+
+---
+
+### 6. AI Integration System
+
+**Key Files:**
+
+- **`src/services/api.js`** - Client-side API calls and validation
+- **`supabase/functions/job-worker/index.ts`** - Server-side story generation (via background jobs)
+
+**Note:** Story generation now uses the Background Job System (see Section 5). The flow is documented there with full job lifecycle.
 
 **API Endpoints Used:**
 
 1. **Text Generation:** `gemini-2.5-flash-lite` (via Edge Function)
    - Generates Japanese stories + translations + vocab + questions
    - Runs on Supabase Edge Functions (Deno runtime)
+   - Voice: "Aoede"
 
 2. **TTS Generation:** `gemini-2.5-flash-preview-tts` (client-side)
    - Converts Japanese text to natural-sounding speech
    - Returns WAV audio data
+   - Rate limited to ~3 requests/minute
    - **TODO:** Migrate to Edge Function
+
+3. **Image Generation:** `pollinations.ai` API (client-side)
+   - Generates illustrations for story segments
+   - Model: `zimage`
+   - No apparent rate limiting
+   - **Lower priority for migration**
 
 **Error Handling:**
 
@@ -341,7 +504,7 @@ Return story object → save to storage → redirect to Reader
 
 ---
 
-### 5. User Interface Components
+### 7. User Interface Components
 
 #### Component Hierarchy
 
@@ -541,7 +704,7 @@ body { font-family: 'Inter', sans-serif; }
 
 ## Data Flow Diagrams
 
-### Story Generation Flow
+### Story Generation Flow (Background Job System)
 
 ```
 ┌─────────────┐
@@ -553,29 +716,57 @@ body { font-family: 'Inter', sans-serif; }
 └──────┬──────┘
        ↓
 ┌─────────────┐
-│ api.js      │
-│generateStory│
+│ createStory │
+│GenerationJob│
 └──────┬──────┘
        ↓
-┌─────────────┐       ┌──────────────────┐
-│Supabase Edge│──────→│ Gemini API       │
-│Function     │       │ (Text Gen)       │
-└──────┬──────┘       └──────────────────┘
-       ↓                    (can close browser!)
 ┌─────────────┐
-│ Story Object│
-│ (from Edge) │
+│ job-creator │ (Edge Function)
+│ Returns Job │ (IMMEDIATE!)
+│    ID       │
 └──────┬──────┘
        ↓
 ┌─────────────┐       ┌──────────────┐
-│storage.js   │──────→│ LocalStorage │
-│saveStories()│       │nihongo_stories│
+│ Database    │──────→│   Jobs Table  │
+│ (pending)   │       │   status:pending
+└─────────────┘       └──────────────┘
+       ↓
+┌──────────────────────────────────────┐
+│ [USER CAN CLOSE BROWSER HERE!]      │
+│ Job runs on server in background    │
+└──────────────────────────────────────┘
+       ↓ (1 minute max wait)
+┌─────────────┐
+│ pg_cron      │ (Every 1 minute)
+│ triggers     │
+│ job-worker   │
+└──────┬──────┘
+       ↓
+┌─────────────┐       ┌──────────────┐
+│ job-worker  │──────→│ Claims Job   │
+│ (processing) │       │ Updates status│
 └──────┬──────┘       └──────────────┘
        ↓
+┌─────────────┐       ┌──────────────────┐
+│ Gemini API  │──────→│ Story Generated │
+└─────────────┘       └──────────────────┘
+       ↓
+┌─────────────┐
+│ Job Result  │
+│ Saved to DB │
+└──────┬──────┘
+       ↓
 ┌─────────────┐       ┌──────────────┐
-│router.js    │──────→│ Read Page    │
-│navigate()   │       │ (display)    │
-└─────────────┘       └──────────────┘
+│ Client      │──────→│ LocalStorage │
+│ Polling     │       │   Library    │
+│ (detects    │       │ (auto-save)  │
+│ completion) │       └──────────────┘
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│ Toast:       │
+│ "Story ready!"│
+└─────────────┘
 ```
 
 ### Audio Generation Flow
@@ -623,6 +814,52 @@ body { font-family: 'Inter', sans-serif; }
 └─────────────┘
 ```
 
+### Image Generation Flow
+
+```
+┌─────────────┐
+│ Display     │
+│ Story in    │
+│ Reader      │
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│ Reader.js   │
+│ Detects     │
+│ Missing     │
+│ Images      │
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│ Fetch from  │
+│Pollinations │
+│ AI          │
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│ Image Blob  │
+│ Response    │
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│Cache API    │
+│(/images/...)│
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│ Display     │
+│ with fade-in│
+│ animation   │
+└─────────────┘
+```
+
+**Notes:**
+
+- Images generated per story segment based on `imagePrompt`
+- Generated on-demand as user scrolls through story
+- Less disruptive if browser closes (images reload on navigation)
+- No rate limiting observed
+
 ### Cloud Sync Flow
 
 ```
@@ -656,40 +893,95 @@ body { font-family: 'Inter', sans-serif; }
                      └──────────────┘
 ```
 
+### Cache Strategy
+
+**Hybrid Caching System:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CACHE CHECK SEQUENCE                     │
+└─────────────────────────────────────────────────────────────┘
+
+For Audio:
+1. Check Browser Cache API (key: `story-audio-{storyId}`)
+   ↓ Not found
+2. Check Supabase Storage (`audio-cache` bucket)
+   ↓ Not found
+3. Generate new audio (client-side API call)
+   ↓ Store in both Browser Cache + Supabase Storage
+
+For Images:
+1. Check Browser Cache API (key: `/images/{storyId}/segment-{index}`)
+   ↓ Not found
+2. Check Supabase Storage (`image-cache` bucket)
+   ↓ Not found
+3. Generate new image (Pollinations AI)
+   ↓ Store in both Browser Cache + Supabase Storage
+```
+
+**Cache Details:**
+
+| Cache Type        | Purpose                         | Location       | Scope                 |
+| ----------------- | ------------------------------- | -------------- | --------------------- |
+| Browser Cache API | Fast access, offline capability | Client browser | Per-device            |
+| Supabase Storage  | Cloud backup, cross-device sync | Remote buckets | Shared across devices |
+
+**Cache Keys:**
+
+```javascript
+// Audio
+`story-audio-${storyId}` // Browser Cache
+`audio-cache/${storyId}.wav` // Supabase Storage
+// Images
+`/images/${storyId}/segment-${index}` // Browser Cache
+`image-cache/${storyId}_${index}.png`; // Supabase Storage
+```
+
+**Benefits:**
+
+- **Performance**: Browser cache provides instant access
+- **Reliability**: Supabase provides backup if browser cache cleared
+- **Cross-device**: Users can access cached assets on different devices
+- **Offline-capable**: Browser cache works without internet
+
 ---
 
 ## File Responsibility Matrix
 
-| File                                   | Primary Role                    | Dependencies                | Used By                                     |
-| -------------------------------------- | ------------------------------- | --------------------------- | ------------------------------------------- |
-| **src/main.js**                        | App entry point                 | router.js, Header           | Browser                                     |
-| **src/types.js**                       | Type definitions (JSDoc)        | None                        | api.js, storage.js, audio.js, audioQueue.js |
-| **src/utils/router.js**                | Hash routing, lazy loading      | componentBase.js            | All pages                                   |
-| **src/utils/componentBase.js**         | Component lifecycle             | eventManager.js             | router.js, all components                   |
-| **src/utils/eventManager.js**          | Event management, cleanup       | None                        | All components                              |
-| **src/utils/storage.js**               | Data persistence, Supabase sync | supabase.js                 | All components                              |
-| **src/utils/supabase.js**              | Supabase client config          | @supabase/supabase-js       | storage.js                                  |
-| **src/utils/audio.js**                 | Audio playback                  | audioHelpers.js, storage.js | Reader.js                                   |
-| **src/utils/audioQueue.js**            | TTS generation queue            | api.js, storage.js          | GeneratorModal.js                           |
-| **src/utils/audioHelpers.js**          | WAV format utilities            | None                        | audio.js                                    |
-| **src/utils/imageStorage.js**          | Image caching                   | storage.js                  | Reader.js                                   |
-| **src/services/api.js**                | Client-side API calls           | @supabase/supabase-js       | audioQueue.js, GeneratorModal.js            |
-| **supabase/functions/generate-story/** | Server-side story generation    | @google/generative-ai       | api.js (via Supabase)                       |
-| **src/components/Header.js**           | Navigation, theme toggle        | router.js, storage.js       | All pages                                   |
-| **src/components/Reader.js**           | Story display, playback         | audio.js, storage.js        | Read page                                   |
-| **src/components/GeneratorModal.js**   | Story creation form             | api.js, storage.js          | Header (global)                             |
-| **src/components/StoryCard.js**        | Story preview card              | storage.js                  | Home, Library                               |
-| **src/components/Toast.js**            | Notifications                   | eventManager.js             | All components                              |
-| **src/components/ProgressBar.js**      | Loading indicator               | None                        | All components                              |
-| **src/pages/Home.js**                  | Landing page                    | StoryCard, storage.js       | router.js                                   |
-| **src/pages/Library.js**               | Story browser                   | StoryCard, storage.js       | router.js                                   |
-| **src/pages/Read.js**                  | Story loader                    | Reader, storage.js          | router.js                                   |
-| **src/pages/Queue.js**                 | TTS queue status                | audioQueue.js               | router.js                                   |
-| **src/pages/Settings.js**              | User preferences                | storage.js                  | router.js                                   |
-| **src/pages/KanaChart.js**             | Kana reference                  | data/kana.js                | router.js                                   |
-| **src/data/kana.js**                   | Kana character data             | None                        | KanaChart.js                                |
-| **src/styles/index.css**               | Design system                   | None                        | All components                              |
-| **index.html**                         | HTML entry point                | Google Fonts                | main.js                                     |
+| File                                                   | Primary Role                          | Dependencies                       | Used By                              |
+| ------------------------------------------------------ | ------------------------------------- | ---------------------------------- | ------------------------------------ |
+| **src/main.js**                                        | App entry point                       | router.js, Header                  | Browser                              |
+| **src/types.js**                                       | Type definitions (JSDoc)              | None                               | api.js, storage.js, jobQueue.js      |
+| **src/utils/router.js**                                | Hash routing, lazy loading            | componentBase.js                   | All pages                            |
+| **src/utils/componentBase.js**                         | Component lifecycle                   | eventManager.js                    | router.js, all components            |
+| **src/utils/eventManager.js**                          | Event management, cleanup             | None                               | All components                       |
+| **src/utils/storage.js**                               | Data persistence, Supabase sync       | supabase.js                        | All components                       |
+| **src/utils/supabase.js**                              | Supabase client config                | @supabase/supabase-js              | storage.js, jobQueue.js              |
+| **src/utils/jobQueue.js**                              | Background job queue manager          | supabase.js                        | Header.js, Queue.js, api.js          |
+| **src/utils/audio.js**                                 | Audio playback                        | audioHelpers.js, storage.js        | Reader.js                            |
+| **src/utils/audioQueue.js**                            | TTS generation queue (legacy)         | api.js, storage.js                 | GeneratorModal.js (being phased out) |
+| **src/utils/audioHelpers.js**                          | WAV format utilities                  | None                               | audio.js                             |
+| **src/utils/imageStorage.js**                          | Image caching                         | storage.js                         | Reader.js                            |
+| **src/services/api.js**                                | Client-side API calls                 | @supabase/supabase-js, jobQueue.js | GeneratorModal.js                    |
+| **supabase/functions/job-creator/**                    | Job creation endpoint                 | @supabase/supabase-js              | api.js (via jobQueue)                |
+| **supabase/functions/job-worker/**                     | Job processing worker                 | @google/generative-ai              | pg_cron (every 1 minute)             |
+| **supabase/functions/job-status/**                     | Job status endpoint                   | @supabase/supabase-js              | jobQueue.js (polling)                |
+| **src/components/Header.js**                           | Navigation, theme toggle, queue badge | router.js, storage.js, jobQueue.js | All pages                            |
+| **src/components/Reader.js**                           | Story display, playback               | audio.js, storage.js               | Read page                            |
+| **src/components/GeneratorModal.js**                   | Story creation form                   | api.js, storage.js                 | Header (global)                      |
+| **src/components/StoryCard.js**                        | Story preview card                    | storage.js                         | Home, Library                        |
+| **src/components/Toast.js**                            | Notifications                         | eventManager.js                    | All components                       |
+| **src/components/ProgressBar.js**                      | Loading indicator                     | None                               | All components                       |
+| **src/pages/Home.js**                                  | Landing page                          | StoryCard, storage.js              | router.js                            |
+| **src/pages/Library.js**                               | Story browser                         | StoryCard, storage.js              | router.js                            |
+| **src/pages/Read.js**                                  | Story loader                          | Reader, storage.js                 | router.js                            |
+| **src/pages/Queue.js**                                 | Unified job queue UI                  | jobQueue.js                        | router.js                            |
+| **src/pages/Settings.js**                              | User preferences                      | storage.js                         | router.js                            |
+| **src/pages/KanaChart.js**                             | Kana reference                        | data/kana.js                       | router.js                            |
+| **src/data/kana.js**                                   | Kana character data                   | None                               | KanaChart.js                         |
+| **src/styles/index.css**                               | Design system                         | None                               | All components                       |
+| **index.html**                                         | HTML entry point                      | Google Fonts                       | main.js                              |
+| **supabase/migrations/20240104_create_jobs_table.sql** | Jobs table schema                     | -                                  | Database setup                       |
 
 ---
 
@@ -707,8 +999,26 @@ The project uses JSDoc for type documentation without TypeScript migration. This
 /**
  * @typedef {import('../types.js').Story} Story
  * @typedef {import('../types.js').UserSettings} UserSettings
+ * @typedef {import('../types.js').Job} Job
+ * @typedef {import('../types.js').JobType} JobType
+ * @typedef {import('../types.js').JobStatus} JobStatus
  */
 ```
+
+**Available Types:**
+
+- `Story` - Complete story object
+- `StoryContent` - Story segment
+- `VocabularyNote` - Vocabulary entry
+- `ComprehensionQuestion` - Quiz question
+- `UserSettings` - User preferences
+- `StoryProgress` - Reading progress
+- `ApiKeys` - API key storage
+- `AudioState` - Playback state
+- `AudioQueueItem` - Queue item
+- `Job` - Background job object (NEW)
+- `JobType` - Job type: story_generation, audio_generation, image_generation (NEW)
+- `JobStatus` - Job status: pending, processing, completed, failed, cancelled (NEW)
 
 **Use types in function signatures:**
 
@@ -793,6 +1103,149 @@ if (!isValidStoryLevel(level)) {
      button.removeEventListener('click', handler);
    });
    ```
+
+### Adding a New Job Type
+
+**To add a new job type (e.g., "translation_job"):**
+
+1. **Update database constraint:**
+
+```sql
+-- In Supabase SQL Editor
+ALTER TABLE jobs
+DROP CONSTRAINT jobs_job_type_check;
+
+ALTER TABLE jobs
+ADD CONSTRAINT jobs_job_type_check
+CHECK (job_type IN ('story_generation', 'audio_generation', 'image_generation', 'translation_job'));
+```
+
+2. **Add validator in job-creator** (`supabase/functions/job-creator/index.ts`):
+
+```typescript
+const JOB_VALIDATORS = {
+  // ... existing
+  translation_job: data => {
+    if (!data.text || !data.targetLanguage) {
+      throw new Error('text and targetLanguage are required');
+    }
+    return true;
+  },
+};
+```
+
+3. **Add processor in job-worker** (`supabase/functions/job-worker/index.ts`):
+
+```typescript
+const JOB_PROCESSORS = {
+  // ... existing
+  translation_job: async parameters => {
+    const { text, targetLanguage, geminiApiKey } = parameters;
+
+    // Call translation API
+    // Return result
+
+    return { translatedText: '...' };
+  },
+};
+```
+
+4. **Create client-side helper** (`src/services/api.js`):
+
+```javascript
+/**
+ * Create a background job for translation
+ * @param {string} text - Text to translate
+ * @param {string} targetLanguage - Target language code
+ * @returns {Promise<string>} Job ID
+ */
+export const createTranslationJob = async (text, targetLanguage) => {
+  const { jobQueue } = await import('../utils/jobQueue.js');
+  const keys = getApiKeys();
+
+  return await jobQueue.createJob('translation_job', {
+    text,
+    targetLanguage,
+    geminiApiKey: keys.translation,
+  });
+};
+```
+
+5. **Update types** (`src/types.js`):
+
+```javascript
+/**
+ * Valid job types
+ * @typedef {'story_generation' | 'audio_generation' | 'image_generation' | 'translation_job'} JobType
+ */
+```
+
+### Working with Background Jobs
+
+**Create a job from client code:**
+
+```javascript
+import { createStoryGenerationJob } from './services/api.js';
+
+// Queue a story generation job
+const jobId = await createStoryGenerationJob(
+  'A cat who loves sushi',
+  'N4',
+  'Make it funny',
+  'short'
+);
+
+console.log('Job queued:', jobId);
+```
+
+**Monitor job status:**
+
+```javascript
+import { jobQueue } from './utils/jobQueue.js';
+
+// Subscribe to job updates
+const unsubscribe = jobQueue.subscribe(jobs => {
+  const pendingJobs = Array.from(jobs.values()).filter(
+    j => j.status === 'pending' || j.status === 'processing'
+  );
+
+  console.log('Pending jobs:', pendingJobs.length);
+
+  pendingJobs.forEach(job => {
+    console.log(`Job ${job.id}: ${job.status}`);
+    if (job.status === 'completed') {
+      console.log('Result:', job.result);
+    }
+  });
+});
+
+// Later: unsubscribe()
+// unsubscribe();
+```
+
+**Retry a failed job:**
+
+```javascript
+import { jobQueue } from './utils/jobQueue.js';
+
+await jobQueue.retryJob(jobId);
+```
+
+**Cancel a pending job:**
+
+```javascript
+import { jobQueue } from './utils/jobQueue.js';
+
+await jobQueue.cancelJob(jobId);
+```
+
+**Job lifecycle:**
+
+1. **pending** → Job created, waiting in queue
+2. **processing** → Worker is processing the job
+3. **completed** → Job finished successfully, result stored
+4. **failed** → Job encountered error (can retry)
+5. **cancelled** → Job was cancelled by user
 
 ### Adding Storage Operations
 
@@ -900,13 +1353,35 @@ GEMINI_API_KEY=...                   # Gemini API (for story generation)
 
 ---
 
-_Last Updated: January 4, 2026 (Edge Functions integration for story generation)_
+_Last Updated: January 4, 2026 (Implemented Background Job System)_
 
 **Recent Changes:**
 
-- Migrated story generation from client-side to Supabase Edge Functions
-- Users can now close browser during story generation (~30-60 seconds)
-- API keys moved server-side for improved security
-- Added comprehensive documentation (EDGE_FUNCTION_SETUP.md, SUPABASE_API_KEY_MIGRATION.md)
-- See commit: `feat: migrate story generation to Supabase Edge Functions`
-  _For AI Agent Context: See AGENTS.md_
+- **January 4, 2026 (Background Job System)**:
+  - ✅ **Implemented database-backed job queue system**
+  - ✅ **Story generation now runs in background** - users can close browser!
+  - ✅ **Created 3 new Edge Functions**: job-creator, job-worker, job-status
+  - ✅ **Added jobs table** to database with RLS policies
+  - ✅ **Refactored Queue page** for unified job management
+  - ✅ **Added job polling** (3-second intervals) for real-time UI updates
+  - ✅ **Implemented job lifecycle**: pending → processing → completed/failed
+  - ✅ **Manual retry** for failed jobs
+  - ✅ **Sequential job processing** - respects API rate limits
+  - ✅ **Added comprehensive documentation**: HOW_TO_MIGRATE.md, updated ARCHITECTURE.md
+  - See sections:
+    - Section 5: Background Job System
+    - Section 6: AI Integration (updated)
+    - Data Flow Diagrams (updated)
+
+- **Earlier (January 4, 2026)**:
+  - Added image generation flow diagram and documentation
+  - Added comprehensive cache strategy section (browser + Supabase)
+  - Added service architecture table (client vs server)
+  - Documented migration roadmap for audio/image generation
+  - Migrated story generation from client-side to Supabase Edge Functions
+  - Users can now close browser during story generation (~30-60 seconds)
+  - API keys moved to user-provided model (bring-your-key)
+  - Added comprehensive documentation (EDGE_FUNCTION_SETUP.md, SUPABASE_API_KEY_MIGRATE.md)
+  - See commit: `feat: migrate story generation to Supabase Edge Functions`
+
+_For AI Agent Context: See AGENTS.md_

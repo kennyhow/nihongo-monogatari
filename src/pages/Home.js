@@ -7,15 +7,17 @@ import StoryCard from '../components/StoryCard.js';
 import { sampleStories } from '../data/stories.js';
 import { getStoredStories, getStoryProgress } from '../utils/storage.js';
 
-const Home = (parentElement) => {
+const Home = parentElement => {
   // Get stories data
   const allStories = [...getStoredStories(), ...sampleStories];
 
   // Find in-progress stories
-  const inProgressStories = allStories.filter(story => {
-    const progress = getStoryProgress(story.id);
-    return progress && !progress.completed;
-  }).slice(0, 2);
+  const inProgressStories = allStories
+    .filter(story => {
+      const progress = getStoryProgress(story.id);
+      return progress && !progress.completed;
+    })
+    .slice(0, 2);
 
   // Featured stories (first 3 sample stories)
   const featuredStories = sampleStories.slice(0, 3);
@@ -70,7 +72,9 @@ const Home = (parentElement) => {
         </div>
       </section>
 
-      ${inProgressStories.length > 0 ? `
+      ${
+        inProgressStories.length > 0
+          ? `
         <!-- Continue Reading Section -->
         <section class="section">
           <div class="section__header">
@@ -81,10 +85,14 @@ const Home = (parentElement) => {
             ${inProgressStories.map(story => StoryCard(story)).join('')}
           </div>
         </section>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Featured Stories Section -->
-      ${featuredStories.length > 0 ? `
+      ${
+        featuredStories.length > 0
+          ? `
         <section class="section">
           <div class="section__header">
             <h2 class="section__title">⭐ Featured Stories</h2>
@@ -94,7 +102,9 @@ const Home = (parentElement) => {
             ${featuredStories.map(story => StoryCard(story)).join('')}
           </div>
         </section>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Call to Action -->
       <section class="cta-section">
