@@ -67,20 +67,27 @@ CULTURAL CONTEXT: Deep cultural analysis, historical context, literary reference
   const exampleOutput = `Example output for topic "A cat who loves sushi" at N4 level:
 
 {
-  "titleJP": "すし好きのねこ",
+  "titleJP": "すし好きの猫",
   "titleEN": "The Sushi-Loving Cat",
   "level": "N4",
   "readTime": 3,
   "excerpt": "A curious cat discovers a sushi restaurant and develops an unexpected friendship with the chef.",
   "content": [
     {
-      "jp": "ある日、白いねこがすし屋の前を歩きました。",
-      "jp_furigana": "<ruby>某日<rt>あるち</rt></ruby>、<ruby>白<rt>しろ</rt></ruby>いねこが<ruby>寿司<rt>すし</rt></ruby><ruby>屋<rt>や</rt></ruby>の<ruby>前<rt>まえ</rt></ruby>を<ruby>歩<rt>ある</rt></ruby>きました。",
+      "jp": "ある日、白い猫が寿司屋の前を歩きました。",
+      "readings": [
+        {"text": "ある日", "reading": "あるち"},
+        {"text": "白い", "reading": "しろい"},
+        {"text": "猫", "reading": "ねこ"},
+        {"text": "寿司屋", "reading": "すしや"},
+        {"text": "前", "reading": "まえ"},
+        {"text": "歩", "reading": "ある"}
+      ],
       "en": "One day, a white cat walked in front of a sushi restaurant.",
       "imagePrompt": "A small white cat with curious eyes sitting in front of a traditional Japanese sushi restaurant with a noren curtain, warm afternoon sunlight, anime illustration style, soft pastel colors",
-      "notes": [
-        { "term": "ある日", "meaning": "One day (story starter)" },
-        { "term": "寿司屋", "meaning": "Sushi restaurant" }
+      "vocab": [
+        {"word": "ある日", "reading": "あるち", "meaning": "One day (story starter)"},
+        {"word": "寿司屋", "reading": "すしや", "meaning": "Sushi restaurant"}
       ]
     }
   ],
@@ -88,8 +95,8 @@ CULTURAL CONTEXT: Deep cultural analysis, historical context, literary reference
     {
       "question": "What did the cat discover?",
       "options": ["A cat food store", "A sushi restaurant", "A fish market", "A park"],
-      "answer": "A sushi restaurant",
-      "explanation": "The story says the cat walked in front of a sushi restaurant (すし屋)."
+      "answer": 1,
+      "explanation": "The story says the cat walked in front of a sushi restaurant (寿司屋)."
     }
   ]
 }`;
@@ -115,15 +122,18 @@ TRANSLATIONS:
 - Provide accurate, natural English translations that capture the nuance and tone
 - Maintain consistency in translation style throughout
 
-FURIGANA ANNOTATION:
-- EVERY kanji in "jp_furigana" must use <ruby> tags: <ruby>漢字<rt>かんじ</rt></ruby>
-- Include furigana for ALL kanji, even common ones
-- Verify all ruby tags are properly closed
+FURIGANA/READINGS:
+- The "readings" array provides furigana for words with kanji in the "jp" field
+- EVERY word in "jp" that contains kanji MUST have a corresponding entry in "readings"
+- Format: {"text": "寿司屋", "reading": "すしや"} - the text must match exactly what appears in "jp"
+- Include readings for ALL kanji words, even common ones (学生, 食べる, etc.)
+- This allows the client to generate <ruby> tags automatically without manual HTML encoding
 
-VOCABULARY NOTES:
+VOCABULARY NOTES (vocab array):
 - Select 2-3 words per segment that match the target JLPT level
 - Prioritize words that help comprehension or are culturally significant
-- Provide clear, concise English definitions
+- Each entry must have: word (matching "jp"), reading, and meaning
+- The "word" field should contain kanji (same as appears in the story text)
 
 IMAGE PROMPTS:
 - For each segment, write a detailed visual description in English
@@ -149,12 +159,15 @@ Return STRICT JSON ONLY (no markdown, no explanation outside JSON):
   "excerpt": "2-3 sentence English summary of the story",
   "content": [
     {
-      "jp": "Plain Japanese text",
-      "jp_furigana": "Japanese with <ruby> tags for ALL kanji",
+      "jp": "Japanese text with proper kanji (no HTML tags, no markup)",
+      "readings": [
+        {"text": "日本語", "reading": "にほんご"},
+        {"text": "単語", "reading": "たんご"}
+      ],
       "en": "English translation",
       "imagePrompt": "Detailed visual description for AI image generation",
-      "notes": [
-        {"term": "Japanese word", "meaning": "English definition"}
+      "vocab": [
+        {"word": "日本語", "reading": "にほんご", "meaning": "English definition"}
       ]
     }
   ],
@@ -162,7 +175,7 @@ Return STRICT JSON ONLY (no markdown, no explanation outside JSON):
     {
       "question": "Question in English",
       "options": ["Option A", "Option B", "Option C", "Option D"],
-      "answer": "Exact text of correct option",
+      "answer": <index 0-3>,
       "explanation": "Brief explanation why this is correct"
     }
   ]
@@ -170,12 +183,14 @@ Return STRICT JSON ONLY (no markdown, no explanation outside JSON):
 
 === SELF-VERIFICATION CHECKLIST ===
 Before returning your response, verify:
-[ ] All kanji have <ruby> tags in jp_furigana
-[ ] Each content segment has jp, jp_furigana, en, imagePrompt, and notes fields
+[ ] All kanji words in "jp" have corresponding entries in "readings" array
+[ ] Each "readings" entry has "text" that exactly matches the text in "jp"
+[ ] Each content segment has jp, readings, en, imagePrompt, and vocab fields
 [ ] Vocabulary matches the JLPT ${level} level
 [ ] Story has ${lengthMap[length]} as specified
 [ ] Image prompts are detailed and consistent in style
 [ ] All 3 questions can be answered from the story text
+[ ] Questions "answer" field uses numeric index (0-3), not text
 [ ] JSON is valid and properly formatted
 
 === REFERENCE EXAMPLE ===
@@ -221,6 +236,13 @@ async function processStoryGeneration(parameters: any): Promise<any> {
   // Basic validation
   if (!storyData.titleJP || !storyData.titleEN || !Array.isArray(storyData.content)) {
     throw new Error('Generated story has invalid structure');
+  }
+
+  // Validate each content segment has required fields
+  for (const segment of storyData.content) {
+    if (!segment.jp || !segment.en || !Array.isArray(segment.readings)) {
+      throw new Error('Each content segment must have jp, en, and readings fields');
+    }
   }
 
   return storyData;

@@ -44,20 +44,28 @@ export const STORY_LENGTHS = ['short', 'medium', 'long'];
 // ============================================================================
 
 /**
- * Vocabulary note for a story segment
- * @typedef {Object} VocabularyNote
- * @property {string} term - Japanese word/phrase
+ * Vocabulary entry for a story segment
+ * @typedef {Object} VocabularyEntry
+ * @property {string} word - Japanese word/phrase (with kanji)
+ * @property {string} reading - Hiragana reading of the word
  * @property {string} meaning - English definition
+ */
+
+/**
+ * Reading entry for furigana annotation
+ * @typedef {Object} ReadingEntry
+ * @property {string} text - The exact text from the jp field (with kanji)
+ * @property {string} reading - Hiragana reading for the text
  */
 
 /**
  * Single segment of story content
  * @typedef {Object} StoryContent
- * @property {string} jp - Plain Japanese text without ruby tags
- * @property {string} jp_furigana - Japanese text with <ruby> tags for furigana
+ * @property {string} jp - Plain Japanese text with proper kanji (no HTML/markup)
+ * @property {ReadingEntry[]} [readings] - Array of readings for furigana generation
  * @property {string} en - English translation
  * @property {string} imagePrompt - Detailed visual description for AI image generation
- * @property {VocabularyNote[]} [notes] - Optional array of vocabulary notes
+ * @property {VocabularyEntry[]} [vocab] - Optional array of vocabulary notes
  */
 
 /**
@@ -65,7 +73,7 @@ export const STORY_LENGTHS = ['short', 'medium', 'long'];
  * @typedef {Object} ComprehensionQuestion
  * @property {string} question - Question text in English
  * @property {string[]} options - Array of 4 answer options
- * @property {string} answer - Correct option text (not index)
+ * @property {number} answer - Index of correct option (0-3)
  * @property {string} explanation - Brief explanation of the answer
  */
 
@@ -226,9 +234,9 @@ export const isValidStory = story => {
   return story.content.every(
     segment =>
       typeof segment?.jp === 'string' &&
-      typeof segment?.jp_furigana === 'string' &&
       typeof segment?.en === 'string' &&
-      typeof segment?.imagePrompt === 'string'
+      typeof segment?.imagePrompt === 'string' &&
+      (Array.isArray(segment?.readings) || segment?.readings === undefined)
   );
 };
 

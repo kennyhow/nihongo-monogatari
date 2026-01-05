@@ -250,6 +250,72 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   };
 
   /**
+   * Add furigana to Japanese text using readings array
+   * Converts plain text with kanji into ruby-tagged HTML
+   */
+  const addFurigana = (text, readings = []) => {
+    if (!text) {
+      return '';
+    }
+
+    // If no readings provided, return plain text
+    if (!readings || readings.length === 0) {
+      return text;
+    }
+
+    // Create a map for quick lookup
+    const readingMap = new Map();
+    for (const r of readings) {
+      if (r.text && r.reading) {
+        readingMap.set(r.text, r.reading);
+      }
+    }
+
+    // Sort readings by text length (longest first) to handle overlapping matches
+    const sortedReadings = Array.from(readingMap.entries()).sort(
+      (a, b) => b[0].length - a[0].length
+    );
+
+    // Build result with replacements
+    let result = text;
+    const replaced = new Set(); // Track which positions we've already replaced
+
+    for (const [word, reading] of sortedReadings) {
+      // Find all occurrences of this word in the remaining text
+      let searchStart = 0;
+      while (true) {
+        const index = result.indexOf(word, searchStart);
+        if (index === -1) {
+          break;
+        }
+
+        // Check if this position overlaps with an already replaced section
+        const overlaps = Array.from(replaced).some(
+          ([start, end]) => index < end && index + word.length > start
+        );
+
+        if (!overlaps) {
+          // Replace with ruby tag
+          const before = result.substring(0, index);
+          const after = result.substring(index + word.length);
+          result = `${before}<ruby>${word}<rt>${reading}</rt></ruby>${after}`;
+
+          // Mark this section as replaced
+          replaced.add([index, index + word.length]);
+
+          // Adjust search start due to added ruby tags
+          searchStart = index + word.length + `<ruby>${word}<rt>${reading}</rt></ruby>`.length;
+        } else {
+          // Move past this occurrence
+          searchStart = index + word.length;
+        }
+      }
+    }
+
+    return result;
+  };
+
+  /**
    * Find kana data by character
    */
   const findKanaData = char => {
@@ -343,29 +409,34 @@ const Reader = ({ story, initialProgress, onComplete }) => {
 
     if (contentRoot.children.length === 0) {
       contentRoot.innerHTML = story.content
-        .map(
-          (segment, index) => `
+        .map((segment, index) => {
+          // Generate furigana text if enabled
+          const furiganaText = showFurigana
+            ? addFurigana(segment.jp, segment.readings)
+            : segment.jp;
+
+          return `
         <div class="segment" id="segment-${index}" data-index="${index}">
           <div class="segment__image-container ${!showImages ? 'hidden' : ''}" id="image-container-${index}">
              <div class="segment__image-skeleton skeleton"></div>
           </div>
           <div class="segment__jp">
             <p class="segment__jp-text jp-text">
-              ${wrapKana(showFurigana && segment.jp_furigana ? segment.jp_furigana : segment.jp)}
+              ${wrapKana(furiganaText)}
             </p>
           </div>
           <div class="segment__en ${!showEnglish ? 'hidden' : ''}">
             <p>${segment.en}</p>
             ${
-              segment.notes?.length > 0
+              segment.vocab?.length > 0
                 ? `
               <div class="segment__notes">
-                ${segment.notes
+                ${segment.vocab
                   .map(
-                    note => `
+                    v => `
                   <div class="segment__note">
-                    <span class="segment__note-term">${note.term}:</span>
-                    <span class="segment__note-meaning">${note.meaning}</span>
+                    <span class="segment__note-term">${v.word}:</span>
+                    <span class="segment__note-meaning">${v.meaning}</span>
                   </div>
                 `
                   )
@@ -376,8 +447,8 @@ const Reader = ({ story, initialProgress, onComplete }) => {
             }
           </div>
         </div>
-      `
-        )
+      `;
+        })
         .join('');
     }
 
@@ -457,11 +528,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       showFurigana = e.target.checked;
       const jpTexts = container.querySelectorAll('.segment__jp-text');
       jpTexts.forEach((el, i) => {
-        el.innerHTML = wrapKana(
-          showFurigana && story.content[i].jp_furigana
-            ? story.content[i].jp_furigana
-            : story.content[i].jp
-        );
+        const segment = story.content[i];
+        const furiganaText = showFurigana ? addFurigana(segment.jp, segment.readings) : segment.jp;
+        el.innerHTML = wrapKana(furiganaText);
       });
     });
 
