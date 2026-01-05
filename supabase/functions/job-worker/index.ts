@@ -76,8 +76,7 @@ CULTURAL CONTEXT: Deep cultural analysis, historical context, literary reference
     {
       "jp": "ある日、白い猫が寿司屋の前を歩きました。",
       "readings": [
-        {"text": "ある日", "reading": "あるち"},
-        {"text": "白い", "reading": "しろい"},
+        {"text": "白", "reading": "しろ"},
         {"text": "猫", "reading": "ねこ"},
         {"text": "寿司屋", "reading": "すしや"},
         {"text": "前", "reading": "まえ"},
@@ -123,17 +122,27 @@ TRANSLATIONS:
 - Maintain consistency in translation style throughout
 
 FURIGANA/READINGS:
-- The "readings" array provides furigana for words with kanji in the "jp" field
-- EVERY word in "jp" that contains kanji MUST have a corresponding entry in "readings"
+- The "readings" array provides furigana ONLY for words containing KANJI
+- DO NOT include readings for hiragana-only or katakana-only words (they don't need furigana)
+- DO NOT break apart words - each entry must be a complete word as it appears in the text
 - Format: {"text": "寿司屋", "reading": "すしや"} - the text must match exactly what appears in "jp"
-- Include readings for ALL kanji words, even common ones (学生, 食べる, etc.)
+- EVERY word in "jp" that contains kanji MUST have a corresponding entry in "readings"
 - This allows the client to generate <ruby> tags automatically without manual HTML encoding
+
+Examples:
+✅ INCLUDE: {"text": "学生", "reading": "がくせい"} (complete word with kanji)
+✅ INCLUDE: {"text": "行", "reading": "い"} (complete word with kanji)
+✅ INCLUDE: {"text": "寿司屋", "reading": "すしや"} (complete word with kanji)
+❌ DO NOT INCLUDE: "けん" from "けんさん" (part of a larger word - add the full word or nothing)
+❌ DO NOT INCLUDE: "コンビニ" (pure katakana - no furigana needed)
+❌ DO NOT INCLUDE: "おいしい" (pure hiragana - no furigana needed)
 
 VOCABULARY NOTES (vocab array):
 - Select 2-3 words per segment that match the target JLPT level
 - Prioritize words that help comprehension or are culturally significant
+- Include words with kanji, but also important kana words (e.g., "ある日", "おいしい")
 - Each entry must have: word (matching "jp"), reading, and meaning
-- The "word" field should contain kanji (same as appears in the story text)
+- The "word" field should exactly match how it appears in the story text
 
 IMAGE PROMPTS:
 - For each segment, write a detailed visual description in English
@@ -184,6 +193,7 @@ Return STRICT JSON ONLY (no markdown, no explanation outside JSON):
 === SELF-VERIFICATION CHECKLIST ===
 Before returning your response, verify:
 [ ] All kanji words in "jp" have corresponding entries in "readings" array
+[ ] "readings" array does NOT include hiragana-only or katakana-only words
 [ ] Each "readings" entry has "text" that exactly matches the text in "jp"
 [ ] Each content segment has jp, readings, en, imagePrompt, and vocab fields
 [ ] Vocabulary matches the JLPT ${level} level
@@ -445,10 +455,18 @@ serve(async req => {
 
   console.log(`[Job Worker] Invoked from source: ${source}`);
 
-  // Skip auth for testing (remove this in production!)
-  // if (authHeader !== `Bearer ${cronSecret}`) {
-  //   return new Response('Unauthorized', { status: 401 });
-  // }
+  // Verify authorization (database trigger uses cron secret)
+  // Database triggers and authorized callers must provide Bearer token
+  if (!cronSecret) {
+    return new Response('Server configuration error: CRON_SECRET not set', {
+      status: 500,
+    });
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    console.error(`[Job Worker] Unauthorized access attempt from ${source}`);
+    return new Response('Unauthorized', { status: 401 });
+  }
 
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
