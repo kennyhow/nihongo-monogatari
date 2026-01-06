@@ -31,3 +31,22 @@
   --shadow-md: 0 4px 12px hsla(0, 0%, 0%, 0.3);
   --shadow-lg: 0 8px 24px hsla(0, 0%, 0%, 0.4);
 }
+
+/* Dark mode scrollbar styling */
+[data-theme='dark']::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-theme='dark']::-webkit-scrollbar-track {
+  background: var(--color-bg-subtle);
+}
+
+[data-theme='dark']::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+[data-theme='dark']::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}

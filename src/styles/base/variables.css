@@ -125,3 +125,40 @@
   --container-xl: 1200px;
   --header-height: 64px;
 }
+
+/* Smooth theme transitions for interactive elements */
+body,
+.btn,
+.card,
+.form-input,
+.form-select,
+.form-textarea {
+  transition-property: color, background-color, border-color;
+  transition-timing-function: var(--ease-out);
+  transition-duration: var(--duration-normal);
+}
+
+/* Light mode scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-subtle);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* Improved focus-visible styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

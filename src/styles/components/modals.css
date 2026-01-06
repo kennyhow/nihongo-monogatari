@@ -14,6 +14,10 @@
   animation: fadeIn var(--duration-normal) var(--ease-out);
 }
 
+[data-theme='dark'] .modal-backdrop {
+  background: hsla(0, 0%, 0%, 0.7);
+}
+
 .modal {
   position: relative;
   z-index: var(--z-modal);

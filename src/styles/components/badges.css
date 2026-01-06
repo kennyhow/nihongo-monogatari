@@ -20,7 +20,7 @@
 
 .badge--intermediate {
   background: var(--color-warning-light);
-  color: hsl(38, 80%, 35%);
+  color: var(--color-warning);
 }
 
 .badge--advanced {

@@ -77,7 +77,8 @@
 }
 
 .btn--danger:hover {
-  background: hsl(0, 72%, 44%);
+  background: var(--color-error);
+  filter: brightness(0.9);
 }
 
 /* Button sizes */

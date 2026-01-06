@@ -1,0 +1,221 @@
+/* ============================================
+   QUEUE PAGE - Job Queue UI
+   ============================================ */
+
+.queue-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding-bottom: var(--space-16);
+}
+
+/* Header */
+.queue-header {
+  margin-bottom: var(--space-8);
+}
+
+/* Stats Bar */
+.queue-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.queue-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.queue-stat__icon {
+  font-size: var(--text-2xl);
+  opacity: 0.8;
+}
+
+.queue-stat__value {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.queue-stat--processing .queue-stat__value {
+  color: var(--color-warning);
+  animation: pulse 2s infinite;
+}
+
+.queue-stat--success .queue-stat__value {
+  color: var(--color-success);
+}
+
+.queue-stat--error .queue-stat__value {
+  color: var(--color-error);
+}
+
+.queue-stat__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Filters */
+.queue-filters {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+/* Job Cards */
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.queue-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.queue-card:hover {
+  border-color: var(--color-border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.queue-card__header {
+  margin-bottom: var(--space-4);
+}
+
+.queue-card__title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.queue-card__title {
+  font-size: var(--text-lg);
+  margin: 0;
+}
+
+.queue-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.queue-card__status--pending {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.queue-card__status--processing {
+  background: var(--color-info-light);
+  color: var(--color-info);
+  animation: pulse 2s infinite;
+}
+
+.queue-card__status--completed {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.queue-card__status--failed {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.queue-card__status--cancelled {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
+}
+
+.queue-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.queue-card__error {
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  background: var(--color-error-light);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--color-error);
+}
+
+.queue-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Info Section */
+.queue-info {
+  margin-top: var(--space-12);
+}
+
+.queue-info__list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-4) 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.queue-info__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  padding: var(--space-2) 0;
+}
+
+.queue-info__list li::before {
+  content: '•';
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .queue-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .queue-card__title-row {
+    flex-direction: column;
+  }
+
+  .queue-card__actions {
+    flex-direction: column;
+  }
+
+  .queue-card__actions .btn {
+    width: 100%;
+  }
+}
