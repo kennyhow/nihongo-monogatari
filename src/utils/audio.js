@@ -15,6 +15,35 @@ import { supabase, getSession } from './supabase.js';
 let currentAudio = null;
 let onFinishCallback = null;
 
+// Progress tracking subscribers
+const progressCallbacks = new Set();
+
+// Store timeupdate event listener for cleanup
+let timeUpdateHandler = null;
+
+/**
+ * Setup progress tracking for an audio element
+ * @param {HTMLAudioElement} audio - Audio element to track
+ * @private
+ */
+const setupProgressTracking = (audio) => {
+  timeUpdateHandler = () => {
+    const currentTime = audio.currentTime;
+    const duration = audio.duration;
+    const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+    progressCallbacks.forEach(callback => {
+      try {
+        callback({ currentTime, duration, progress });
+      } catch (e) {
+        console.error('Progress callback error, removing:', e);
+        progressCallbacks.delete(callback);
+      }
+    });
+  };
+  audio.addEventListener('timeupdate', timeUpdateHandler);
+};
+
 /**
  * Check if high-quality audio is cached for a story
  * @param {string} storyId - Story ID to check
@@ -85,11 +114,18 @@ export const isAudioAvailable = async storyId => {
  * Get current audio playback state
  * @returns {AudioState} Current audio state
  */
-export const getAudioState = () => ({
-  isPlaying: currentAudio && !currentAudio.paused,
-  currentTime: currentAudio?.currentTime || 0,
-  duration: currentAudio?.duration || 0,
-});
+export const getAudioState = () => {
+  return {
+    isPlaying: currentAudio ? !currentAudio.paused : false,
+    isPaused: currentAudio ? currentAudio.paused : true,
+    currentTime: currentAudio?.currentTime ?? 0,
+    duration: currentAudio?.duration ?? 0,
+    progress: currentAudio && currentAudio.duration > 0
+      ? (currentAudio.currentTime / currentAudio.duration) * 100
+      : 0,
+    playbackRate: currentAudio?.playbackRate ?? 1,
+  };
+};
 
 /**
  * Play audio for a given text
@@ -124,16 +160,27 @@ export const playAudio = async (text, onFinish, storyId = null) => {
         currentAudio = new Audio(url);
         currentAudio.onended = () => {
           URL.revokeObjectURL(url);
+          if (timeUpdateHandler) {
+            currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
+            timeUpdateHandler = null;
+          }
           if (onFinishCallback) {
             onFinishCallback();
           }
         };
         currentAudio.onerror = () => {
           URL.revokeObjectURL(url);
+          if (timeUpdateHandler) {
+            currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
+            timeUpdateHandler = null;
+          }
           if (onFinishCallback) {
             onFinishCallback();
           }
         };
+
+        // Add progress tracking
+        setupProgressTracking(currentAudio);
 
         await currentAudio.play();
         return;
@@ -159,10 +206,28 @@ export const playAudio = async (text, onFinish, storyId = null) => {
           currentAudio = new Audio(url);
           currentAudio.onended = () => {
             URL.revokeObjectURL(url);
+            if (timeUpdateHandler) {
+              currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
+              timeUpdateHandler = null;
+            }
             if (onFinishCallback) {
               onFinishCallback();
             }
           };
+          currentAudio.onerror = () => {
+            URL.revokeObjectURL(url);
+            if (timeUpdateHandler) {
+              currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
+              timeUpdateHandler = null;
+            }
+            if (onFinishCallback) {
+              onFinishCallback();
+            }
+          };
+
+          // Add progress tracking
+          setupProgressTracking(currentAudio);
+
           await currentAudio.play();
           return;
         }
@@ -183,12 +248,21 @@ export const playAudio = async (text, onFinish, storyId = null) => {
  */
 export const cancelAudio = () => {
   if (currentAudio) {
+    // Remove timeupdate event listener if it exists
+    if (timeUpdateHandler) {
+      currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
+      timeUpdateHandler = null;
+    }
+
     currentAudio.pause();
     currentAudio.src = '';
     currentAudio = null;
   }
 
   onFinishCallback = null;
+
+  // Note: progress callbacks are managed by subscribeToProgress()
+  // Subscribers decide when to unsubscribe via the returned unsubscribe function
 };
 
 /**
@@ -216,6 +290,74 @@ export const setPlaybackRate = rate => {
  */
 export const seekTo = time => {
   if (currentAudio && !isNaN(time)) {
-    currentAudio.currentTime = Math.max(0, Math.min(time, currentAudio.duration || 0));
+    const duration = currentAudio.duration || 0;
+    if (!isNaN(duration) && duration > 0) {
+      currentAudio.currentTime = Math.max(0, Math.min(time, duration));
+    }
   }
+};
+
+/**
+ * Toggle pause/play state
+ * @returns {Promise<boolean>} New state (true = playing, false = paused)
+ */
+export const togglePause = async () => {
+  if (!currentAudio) {
+    return false;
+  }
+
+  if (currentAudio.paused) {
+    await currentAudio.play();
+    return true; // Playing
+  } else {
+    currentAudio.pause();
+    return false; // Paused
+  }
+};
+
+/**
+ * Check if audio is currently paused
+ * @returns {boolean} True if audio is paused or not playing
+ */
+export const isPaused = () => {
+  return currentAudio?.paused ?? true;
+};
+
+/**
+ * Jump forward in audio
+ * @param {number} seconds - Seconds to jump forward
+ */
+export const jumpForward = seconds => {
+  if (currentAudio) {
+    currentAudio.currentTime = Math.min(
+      currentAudio.duration || 0,
+      currentAudio.currentTime + (seconds || 5)
+    );
+  }
+};
+
+/**
+ * Jump backward in audio
+ * @param {number} seconds - Seconds to jump backward
+ */
+export const jumpBackward = seconds => {
+  if (currentAudio) {
+    currentAudio.currentTime = Math.max(0, currentAudio.currentTime - (seconds || 5));
+  }
+};
+
+/**
+ * Subscribe to audio progress updates
+ * @param {(progress: {currentTime: number, duration: number, progress: number}) => void} callback
+ * @returns {() => void} Unsubscribe function
+ */
+export const subscribeToProgress = callback => {
+  if (typeof callback === 'function') {
+    progressCallbacks.add(callback);
+  }
+
+  // Return unsubscribe function
+  return () => {
+    progressCallbacks.delete(callback);
+  };
 };

@@ -5,12 +5,72 @@
  */
 
 import { saveProgress, getSettings, saveSettings, getApiKeys } from '../utils/storage.js';
-import { playAudio, cancelAudio, isAudioAvailable } from '../utils/audio.js';
+import {
+  playAudio,
+  cancelAudio,
+  isAudioAvailable,
+  togglePause,
+  jumpForward,
+  jumpBackward,
+  seekTo,
+  setPlaybackRate,
+  subscribeToProgress
+} from '../utils/audio.js';
 import { createEventManager } from '../utils/componentBase.js';
 import { KANA_DATA } from '../data/kana.js';
 import { getCachedImage, cacheImage } from '../utils/imageStorage.js';
 import { createAudioGenerationJob } from '../services/api.js';
 import { supabase } from '../utils/supabase.js';
+
+/**
+ * Logger utility for consistent debugging
+ */
+const logger = {
+  debug: (...args) => {
+    if (import.meta.env.DEV) {
+      console.log('[Reader]', ...args);
+    }
+  },
+  info: (...args) => console.info('[Reader]', ...args),
+  warn: (...args) => console.warn('[Reader]', ...args),
+  error: (...args) => console.error('[Reader]', ...args),
+};
+
+/**
+ * Constants for audio playback
+ */
+const PLAYBACK_SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5];
+const DEFAULT_SPEED = 1.0;
+
+/**
+ * Helper Functions
+ */
+
+/**
+ * Format time in seconds to M:SS format
+ * @param {number} seconds - Time in seconds
+ * @returns {string} Formatted time string (e.g., "2:34")
+ */
+const formatTime = seconds => {
+  if (!seconds || isNaN(seconds)) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+/**
+ * Find the closest speed index for boundary handling
+ * @param {number} targetSpeed - The target speed
+ * @param {number[]} speeds - Array of available speeds
+ * @returns {number} Index of closest speed
+ */
+const findClosestSpeedIndex = (targetSpeed, speeds) => {
+  return speeds.reduce((prevIndex, curr, currIndex, array) => {
+    return Math.abs(curr - targetSpeed) < Math.abs(array[prevIndex] - targetSpeed)
+      ? currIndex
+      : prevIndex;
+  }, 0);
+};
 
 /**
  * Create the Reader component
@@ -30,8 +90,12 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   let currentProgress = initialProgress?.completed ? 100 : 0;
   let activeSegmentIndex = -1;
   let isPlaying = false;
+  let isPaused = false;
+  let audioProgress = { currentTime: 0, duration: 0, progress: 0 };
+  let playbackSpeed = 1.0;
+  let isAudioLoading = false;
+  let unsubscribeProgress = null;
   let isHQAvailable = false;
-  const playbackProgress = 0;
   let isLoadingImages = false;
 
   // Container element
@@ -138,6 +202,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     updateContent();
     updateComprehension();
     setupListeners();
+    setupKeyboardShortcuts();
     loadImages();
   };
 
@@ -159,7 +224,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
             <p class="reader__subtitle">${story.titleEN}</p>
           </div>
         </div>
-        
+
         <div class="reader__controls">
           <button id="settings-btn" class="icon-btn" title="Reading settings">⚙️</button>
           ${
@@ -181,7 +246,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           }
         </div>
       </div>
-      
+
       <div class="reader__progress">
         <div class="progress">
           <div class="progress__bar" style="width: ${currentProgress}%"></div>
@@ -221,18 +286,262 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       return;
     }
 
+    // Show loading state if duration is NaN or audio is loading
+    if (isAudioLoading || isNaN(audioProgress.duration)) {
+      audioRoot.innerHTML = `
+        <div class="audio-player">
+          <div class="audio-player__status">⏳ Loading audio...</div>
+        </div>
+      `;
+      return;
+    }
+
     audioRoot.innerHTML = `
       <div class="audio-player">
-        <div class="audio-player__info">
+        <!-- Status row: status text + speed control -->
+        <div class="audio-player__status-row">
           <span class="audio-player__status">
-            ${activeSegmentIndex === -1 ? '✨ Playing High-Quality AI Voice' : `🔊 Playing segment ${activeSegmentIndex + 1}/${story.content.length}`}
+            ${isNaN(audioProgress.duration)
+              ? '⏳ Loading...'
+              : `${isPaused ? '⏸ Paused' : '▶ Playing'} - ${formatTime(audioProgress.currentTime)} / ${formatTime(audioProgress.duration)}`
+            }
           </span>
+          <select id="speed-control" class="audio-player__speed" title="Playback speed">
+            ${PLAYBACK_SPEEDS.map(speed => `<option value="${speed}" ${playbackSpeed === speed ? 'selected' : ''}>${speed}x</option>`).join('')}
+          </select>
         </div>
-        <div class="audio-player__progress">
-          <div class="audio-player__bar" style="width: ${playbackProgress}%"></div>
+
+        <!-- Progress bar with scrubbing -->
+        <div class="audio-player__progress-container">
+          <div class="audio-player__progress-bar" id="progress-bar">
+            <div class="audio-player__progress-fill" style="width: ${audioProgress.progress}%"></div>
+            <div class="audio-player__progress-handle" style="left: ${audioProgress.progress}%"></div>
+          </div>
+        </div>
+
+        <!-- Control buttons -->
+        <div class="audio-player__controls">
+          <button id="jump-back-btn" class="audio-player__btn" title="Rewind 5s (Shift+←)">⏪ -5s</button>
+          <button id="play-pause-btn" class="audio-player__btn audio-player__btn--primary" title="Play/Pause (Space)">
+            ${isPaused ? '▶ Resume' : '⏸ Pause'}
+          </button>
+          <button id="jump-forward-btn" class="audio-player__btn" title="Forward 5s (Shift+→)">⏩ +5s</button>
         </div>
       </div>
     `;
+
+    // Setup control listeners after rendering
+    setupAudioControlListeners();
+  };
+
+  /**
+   * Update only the progress-related DOM elements (performance optimization)
+   * Avoids full DOM rebuild on every timeupdate event
+   * @param {Object} progress - Progress object with currentTime, duration, progress
+   */
+  const updateAudioProgress = progress => {
+    const audioRoot = container.querySelector('#audio-player-root');
+    if (!audioRoot || !isPlaying) {
+      return;
+    }
+
+    // Update only progress-related elements (don't rebuild entire DOM)
+    const statusEl = audioRoot.querySelector('.audio-player__status');
+    const progressFill = audioRoot.querySelector('.audio-player__progress-fill');
+    const progressHandle = audioRoot.querySelector('.audio-player__progress-handle');
+
+    if (statusEl) {
+      statusEl.textContent = `${isPaused ? '⏸ Paused' : '▶ Playing'} - ${formatTime(progress.currentTime)} / ${formatTime(progress.duration)}`;
+    }
+    if (progressFill) {
+      progressFill.style.width = `${progress.progress}%`;
+    }
+    if (progressHandle) {
+      progressHandle.style.left = `${progress.progress}%`;
+    }
+  };
+
+  /**
+   * Setup audio control event listeners
+   */
+  const setupAudioControlListeners = () => {
+    // Play/Pause button
+    const playPauseBtn = container.querySelector('#play-pause-btn');
+    if (playPauseBtn) {
+      events.on(playPauseBtn, 'click', async () => {
+        const wasPaused = isPaused;
+        isPaused = await togglePause();
+
+        // Only update if state actually changed
+        if (wasPaused !== isPaused) {
+          updateHeader();
+          updateAudioUI();
+        }
+      });
+    }
+
+    // Jump buttons
+    const jumpBackBtn = container.querySelector('#jump-back-btn');
+    const jumpForwardBtn = container.querySelector('#jump-forward-btn');
+
+    if (jumpBackBtn) {
+      events.on(jumpBackBtn, 'click', () => {
+        jumpBackward(5);
+      });
+    }
+
+    if (jumpForwardBtn) {
+      events.on(jumpForwardBtn, 'click', () => {
+        jumpForward(5);
+      });
+    }
+
+    // Speed control
+    const speedControl = container.querySelector('#speed-control');
+    if (speedControl) {
+      events.on(speedControl, 'change', e => {
+        const newSpeed = parseFloat(e.target.value);
+        playbackSpeed = newSpeed;
+        setPlaybackRate(newSpeed);
+
+        // Save to settings
+        const currentSettings = getSettings();
+        currentSettings.playbackSpeed = newSpeed;
+        saveSettings(currentSettings);
+
+        logger.debug('Playback speed changed to:', newSpeed);
+      });
+    }
+
+    // Progress bar scrubbing with touch support
+    const progressBar = container.querySelector('#progress-bar');
+    if (progressBar) {
+      const handleScrub = clientX => {
+        const rect = progressBar.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, x / rect.width));
+
+        if (audioProgress.duration > 0 && !isNaN(audioProgress.duration)) {
+          const newTime = percentage * audioProgress.duration;
+          seekTo(newTime);
+        } else {
+          // Show brief "loading" feedback when audio isn't ready
+          progressBar.style.cursor = 'wait';
+          setTimeout(() => {
+            progressBar.style.cursor = 'pointer';
+          }, 500);
+        }
+      };
+
+      events.on(progressBar, 'click', e => handleScrub(e.clientX));
+      events.on(
+        progressBar,
+        'touchstart',
+        e => {
+          e.preventDefault(); // Prevent scroll while scrubbing
+          handleScrub(e.touches[0].clientX);
+        },
+        { passive: false }
+      );
+    }
+  };
+
+  /**
+   * Setup keyboard shortcuts for audio control
+   */
+  const setupKeyboardShortcuts = () => {
+    events.delegate(document, 'keydown', e => {
+      // Only handle if we're on the read page and audio is playing
+      if (!container || !isPlaying) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          const wasPaused = isPaused;
+          isPaused = togglePause();
+          if (wasPaused !== isPaused) {
+            updateHeader();
+            updateAudioUI();
+          }
+          break;
+
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          // These are modifiers, handle combinations below
+          return;
+
+        case 'ArrowLeft':
+          if (e.shiftKey) {
+            e.preventDefault();
+            jumpBackward(5);
+          }
+          break;
+
+        case 'ArrowRight':
+          if (e.shiftKey) {
+            e.preventDefault();
+            jumpForward(5);
+          }
+          break;
+
+        case 'BracketLeft':
+          e.preventDefault();
+          let currentIndex = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
+          if (currentIndex === -1) {
+            currentIndex = findClosestSpeedIndex(playbackSpeed, PLAYBACK_SPEEDS);
+          }
+          const newIndex = Math.max(0, currentIndex - 1);
+          const newSpeed = PLAYBACK_SPEEDS[newIndex];
+          playbackSpeed = newSpeed;
+          setPlaybackRate(newSpeed);
+
+          // Save to settings
+          const currentSettings = getSettings();
+          currentSettings.playbackSpeed = newSpeed;
+          saveSettings(currentSettings);
+
+          // Update speed dropdown
+          const speedControl = container.querySelector('#speed-control');
+          if (speedControl) {
+            speedControl.value = newSpeed;
+          }
+          logger.debug('Speed decreased to:', newSpeed);
+          break;
+
+        case 'BracketRight':
+          e.preventDefault();
+          let currentIndex2 = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
+          if (currentIndex2 === -1) {
+            currentIndex2 = findClosestSpeedIndex(playbackSpeed, PLAYBACK_SPEEDS);
+          }
+          const newIndex2 = Math.min(PLAYBACK_SPEEDS.length - 1, currentIndex2 + 1);
+          const newSpeed2 = PLAYBACK_SPEEDS[newIndex2];
+          playbackSpeed = newSpeed2;
+          setPlaybackRate(newSpeed2);
+
+          // Save to settings
+          const currentSettings2 = getSettings();
+          currentSettings2.playbackSpeed = newSpeed2;
+          saveSettings(currentSettings2);
+
+          // Update speed dropdown
+          const speedControl2 = container.querySelector('#speed-control');
+          if (speedControl2) {
+            speedControl2.value = newSpeed2;
+          }
+          logger.debug('Speed increased to:', newSpeed2);
+          break;
+
+        case 'Escape':
+          // Check if modal is open before stopping playback
+          const modal = document.querySelector('.generator-modal');
+          if (!modal || modal.classList.contains('hidden')) {
+            e.preventDefault();
+            stopPlayback();
+          }
+          break;
+      }
+    });
   };
 
   /**
@@ -272,9 +581,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     }
 
     // Sort readings by text length (longest first) to handle overlapping matches
-    const sortedReadings = Array.from(readingMap.entries()).sort(
-      (a, b) => b[0].length - a[0].length
-    );
+    const sortedReadings = Array.from(readingMap.entries()).sort((a, b) => b[0].length - a[0].length);
 
     // Build result with replacements
     let result = text;
@@ -411,9 +718,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       contentRoot.innerHTML = story.content
         .map((segment, index) => {
           // Generate furigana text if enabled
-          const furiganaText = showFurigana
-            ? addFurigana(segment.jp, segment.readings)
-            : segment.jp;
+          const furiganaText = showFurigana ? addFurigana(segment.jp, segment.readings) : segment.jp;
 
           return `
         <div class="segment" id="segment-${index}" data-index="${index}">
@@ -642,7 +947,16 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     container._cleanup = () => {
       events.cleanup();
       cancelAudio();
+      if (typeof unsubscribeProgress === 'function') {
+        unsubscribeProgress();
+        unsubscribeProgress = null;
+      }
     };
+
+    // Note: isPlaying vs isPaused
+    //       isPlaying = whether audio is actively being played
+    //       isPaused = whether playback is paused (button state)
+    //       They can briefly differ during state transitions
   };
 
   const handleScroll = () => {
@@ -672,14 +986,35 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   const startPlayback = () => {
     activeSegmentIndex = -1;
     isPlaying = true;
+    isPaused = false;
+    isAudioLoading = true;
+    playbackSpeed = settings.playbackSpeed || DEFAULT_SPEED;
+
     updateHeader();
     updateAudioUI();
     updateContent();
+
+    // Subscribe to progress updates with NaN validation
+    unsubscribeProgress = subscribeToProgress(progress => {
+      audioProgress = progress;
+
+      // Clear loading state when we get valid duration
+      if (!isNaN(progress.duration)) {
+        isAudioLoading = false;
+      }
+
+      // Only update if we have valid progress data to avoid NaN issues
+      if (!isNaN(progress.duration) && !isNaN(progress.currentTime)) {
+        updateAudioProgress(progress);
+      }
+    });
 
     playAudio(
       story.content[0].jp,
       () => {
         isPlaying = false;
+        isPaused = false;
+        isAudioLoading = false;
         activeSegmentIndex = -1;
         updateHeader();
         updateAudioUI();
@@ -692,7 +1027,19 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   const stopPlayback = () => {
     cancelAudio();
     isPlaying = false;
+    isPaused = false;
+    isAudioLoading = false;
     activeSegmentIndex = -1;
+
+    // Unsubscribe from progress updates
+    if (unsubscribeProgress) {
+      unsubscribeProgress();
+      unsubscribeProgress = null;
+    }
+
+    // Reset progress state
+    audioProgress = { currentTime: 0, duration: 0, progress: 0 };
+
     updateHeader();
     updateAudioUI();
     updateContent();
@@ -721,8 +1068,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           const apiKeys = getApiKeys();
           const apiKey = apiKeys.pollinations || import.meta.env.VITE_POLLINATIONS_AI_KEY;
           // Use dedicated imagePrompt if available, otherwise fall back to raw text
-          const imagePrompt =
-            story.content[i].imagePrompt || `${story.content[i].jp}, anime style, soft colors`;
+          const imagePrompt = story.content[i].imagePrompt || `${story.content[i].jp}, anime style, soft colors`;
           const prompt = encodeURIComponent(imagePrompt);
           const imageUrl = `https://gen.pollinations.ai/image/${prompt}?model=zimage`;
 
@@ -789,7 +1135,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       }
 
       // There's a pending/processing job, subscribe to updates
-      console.log('Audio job already in progress, waiting for completion...');
+      logger.debug('Audio job already in progress, waiting for completion...');
 
       const { jobQueue } = await import('../utils/jobQueue.js');
       const unsubscribe = jobQueue.subscribe(jobs => {
@@ -798,26 +1144,23 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         );
 
         if (audioJob?.status === 'completed' && audioJob.result?.audioPath) {
-          console.log(
-            'Audio generation complete! Downloading and caching...',
-            audioJob.result.audioPath
-          );
+          logger.debug('Audio generation complete! Downloading and caching...', audioJob.result.audioPath);
 
           downloadAndCacheAudio(story.id, audioJob.result.audioPath)
             .then(() => {
-              console.log('Audio downloaded and cached successfully');
+              logger.debug('Audio downloaded and cached successfully');
               unsubscribe();
               isHQAvailable = true;
               updateHeader();
             })
             .catch(error => {
-              console.error('Failed to download audio:', error);
+              logger.error('Failed to download audio:', error);
               isHQAvailable = true;
               updateHeader();
             });
         } else if (audioJob?.status === 'failed') {
           // Job failed, unsubscribe and let user try again later
-          console.error('Audio generation job failed:', audioJob.error_message);
+          logger.error('Audio generation job failed:', audioJob.error_message);
           unsubscribe();
         }
       });
@@ -827,7 +1170,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       initializeLayout();
     } else {
       // No audio job exists, create one
-      console.log('Audio not available, triggering generation job...');
+      logger.debug('Audio not available, triggering generation job...');
 
       try {
         const fullText = story.content.map(segment => segment.jp).join('\n');
@@ -841,25 +1184,22 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           );
 
           if (audioJob?.status === 'completed' && audioJob.result?.audioPath) {
-            console.log(
-              'Audio generation complete! Downloading and caching...',
-              audioJob.result.audioPath
-            );
+            logger.debug('Audio generation complete! Downloading and caching...', audioJob.result.audioPath);
 
             downloadAndCacheAudio(story.id, audioJob.result.audioPath)
               .then(() => {
-                console.log('Audio downloaded and cached successfully');
+                logger.debug('Audio downloaded and cached successfully');
                 unsubscribe();
                 isHQAvailable = true;
                 updateHeader();
               })
               .catch(error => {
-                console.error('Failed to download audio:', error);
+                logger.error('Failed to download audio:', error);
                 isHQAvailable = true;
                 updateHeader();
               });
           } else if (audioJob?.status === 'failed') {
-            console.error('Audio generation job failed:', audioJob.error_message);
+            logger.error('Audio generation job failed:', audioJob.error_message);
             unsubscribe();
           }
         });
@@ -868,7 +1208,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         isHQAvailable = false;
         initializeLayout();
       } catch (error) {
-        console.error('Failed to trigger audio generation:', error);
+        logger.error('Failed to trigger audio generation:', error);
         isHQAvailable = false;
         initializeLayout();
       }
@@ -893,11 +1233,19 @@ readerStyles.textContent = `
   .reader__progress { display: flex; align-items: center; gap: var(--space-3); }
   .reader__progress .progress { flex: 1; }
   .reader__progress-text { font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap; }
-  .audio-player { position: fixed; bottom: var(--space-6); left: 50%; transform: translateX(-50%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--space-3) var(--space-5); box-shadow: var(--shadow-lg); z-index: 100; min-width: 280px; }
-  .audio-player__info { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); }
-  .audio-player__status { font-size: var(--text-sm); font-weight: 500; }
-  .audio-player__progress { height: 4px; background: var(--color-bg-subtle); border-radius: var(--radius-full); overflow: hidden; }
-  .audio-player__bar { height: 100%; background: var(--color-primary); transition: width 0.1s linear; }
+  .audio-player { position: fixed; bottom: var(--space-6); left: 50%; transform: translateX(-50%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--space-4) var(--space-5); box-shadow: var(--shadow-lg); z-index: 100; min-width: 320px; max-width: 90vw; }
+  .audio-player__status-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); }
+  .audio-player__status { font-size: var(--text-sm); font-weight: 500; color: var(--color-text); }
+  .audio-player__speed { padding: var(--space-1) var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); font-size: var(--text-sm); cursor: pointer; }
+  .audio-player__progress-container { margin-bottom: var(--space-3); }
+  .audio-player__progress-bar { position: relative; height: 8px; background: var(--color-bg-subtle); border-radius: var(--radius-full); cursor: pointer; }
+  .audio-player__progress-fill { height: 100%; background: var(--color-primary); border-radius: var(--radius-full); transition: width 0.1s linear; }
+  .audio-player__progress-handle { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: var(--color-primary); border: 2px solid white; border-radius: 50%; box-shadow: var(--shadow-sm); transition: left 0.1s linear; }
+  .audio-player__controls { display: flex; justify-content: center; gap: var(--space-3); }
+  .audio-player__btn { padding: var(--space-2) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); cursor: pointer; font-size: var(--text-sm); transition: all var(--duration-fast); }
+  .audio-player__btn:hover { background: var(--color-bg-subtle); border-color: var(--color-primary); }
+  .audio-player__btn--primary { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+  .audio-player__btn--primary:hover { background: var(--color-primary-dark); }
   .reader__content { display: flex; flex-direction: column; gap: var(--space-8); }
   .reader__content--side-by-side .segment { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start; }
   @media (max-width: 768px) { .reader__content--side-by-side .segment { grid-template-columns: 1fr; } }
@@ -973,7 +1321,7 @@ const downloadAndCacheAudio = async (storyId, audioPath) => {
     // Check if already cached
     const existing = await cache.match(cacheKey);
     if (existing) {
-      console.log('Audio already cached, skipping download');
+      logger.debug('Audio already cached, skipping download');
       return;
     }
 
@@ -992,9 +1340,9 @@ const downloadAndCacheAudio = async (storyId, audioPath) => {
       })
     );
 
-    console.log(`Audio cached for story ${storyId}`);
+    logger.debug(`Audio cached for story ${storyId}`);
   } catch (error) {
-    console.error('Failed to download and cache audio:', error);
+    logger.error('Failed to download and cache audio:', error);
     throw error;
   }
 };
