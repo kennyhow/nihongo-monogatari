@@ -118,27 +118,40 @@ localStorage.nihongo_theme; // String - 'light' | 'dark'
 ```javascript
 {
   id: string,              // UUID
-  title: string,           // Japanese title
-  englishTitle: string,    // English translation
-  level: string,           // 'N1' | 'N2' | 'N3' | 'N4' | 'N5'
-  topic: string,           // User-provided topic
-  japaneseText: string,    // Full Japanese story with furigana
-  englishText: string,     // Full English translation
-  vocabulary: Array<{      // Vocabulary notes
-    word: string,
-    reading: string,
-    meaning: string
+  titleJP: string,         // Japanese title
+  titleEN: string,         // English translation
+  level: string,           // 'N1' | 'N2' | 'N3' | 'N4' | 'N5' | 'Beginner' | 'Intermediate' | 'Advanced'
+  readTime: number,        // Estimated reading time in minutes
+  excerpt: string,         // Short English summary
+  content: Array<{         // Story segments
+    jp: string,            // Plain Japanese text with proper kanji (no HTML/markup)
+    readings: Array<{      // Furigana readings for kanji words
+      text: string,        // The exact text from jp field (with kanji)
+      reading: string      // Hiragana reading
+    }>,
+    en: string,            // English translation
+    imagePrompt: string,   // Detailed visual description for AI image generation
+    vocab: Array<{         // Optional vocabulary notes
+      word: string,        // Japanese word/phrase (matches jp field)
+      reading: string,     // Hiragana reading
+      meaning: string      // English definition
+    }>
   }>,
-  questions: Array<{       // Comprehension questions
-    question: string,
-    options: string[],
-    answer: number
+  questions: Array<{       // Optional comprehension questions
+    question: string,      // Question text in English
+    options: string[],     // Array of 4 answer options
+    answer: number,        // Index of correct option (0-3)
+    explanation: string    // Brief explanation of the answer
   }>,
-  imageUrl: string,        // AI-generated illustration
-  createdAt: timestamp,
-  audioGenerated: boolean  // Whether TTS is ready
+  createdAt: timestamp
 }
 ```
+
+**Key Changes (January 2026):**
+- **Furigana system overhaul:** Kanji readings now stored in structured `readings` array
+- **Better kanji handling:** Readings ONLY include words with kanji (not hiragana/katakana-only words)
+- **Complete word matching:** Each reading entry is a complete word, not partial fragments
+- **Content segmentation:** Stories now split into segments with per-segment vocab and image prompts
 
 #### Functions
 
@@ -374,6 +387,11 @@ Jobs process **sequentially** (one at a time):
 - Key passed in job parameters
 - Not stored permanently in database (deleted with job)
 - RLS ensures users can only see their own jobs
+- **CRON_SECRET authentication** (January 2026):
+  - Job-worker requires `Bearer ${CRON_SECRET}` authorization header
+  - Database triggers use cron secret for secure invocation
+  - Unauthorized requests return 401 error
+  - Logs unauthorized access attempts for security monitoring
 
 **Performance:**
 
@@ -471,7 +489,7 @@ Shared Components
 - Renders story content with side-by-side translation
 - Displays vocabulary notes on hover/click
 - Progress tracking (auto-saves reading position)
-- Audio playback controls
+- Audio playback controls (Phase 1 - January 2026)
 - Image display
 - Furigana toggle
 - English translation toggle
@@ -487,13 +505,36 @@ Shared Components
   currentPosition: Number, // Reading progress (0-1)
   isPlaying: Boolean,      // Audio playback state
   currentSentence: Number, // For sentence-by-sentence audio
-  viewMode: String         // 'side-by-side' | 'paragraph'
+  viewMode: String         // 'side-by-side' | 'stacked'
   showFurigana: Boolean    // Show furigana reading aid
   showEnglish: Boolean     // Show English translation
   showImages: Boolean      // Show AI-generated images
   fontSize: String         // 'medium' | 'large'
 }
 ```
+
+**Phase 1 Audio Player Controls (January 2026):**
+
+New comprehensive audio player with the following features:
+
+- **Sticky positioning** - Player stays visible while scrolling through story
+- **Visual progress bar** - Clickable/draggable with gradient fill and handle
+- **Playback speed control** - Toggle between 1x and 1.25x speeds
+- **Time display** - Current time and total duration (MM:SS format)
+- **Play/Pause button** - Large, accessible button with icon
+- **Seek functionality** - Click anywhere on progress bar to jump to position
+- **Keyboard shortcuts** - Space to play/pause, arrow keys for seek
+- **Smooth animations** - slideDown animation on mount, smooth progress updates
+- **Progress tracking** - Real-time progress updates via subscription system
+- **Responsive design** - Works on mobile and desktop
+- **Accessibility** - ARIA labels, focus-visible states, semantic HTML
+
+**Implementation Details:**
+
+- `src/components/Reader.js`: Audio player UI integration (+430 lines)
+- `src/utils/audio.js`: Audio playback utilities with progress tracking (+154 lines)
+- `src/styles/components/audioplayer.css`: Dedicated audio player styles (198 lines)
+- `src/styles/animations.css`: Animation keyframes for UI transitions (41 lines)
 
 **Data Flow:**
 
@@ -569,19 +610,56 @@ Submit → api.generateStory() → Save → Navigate to Reader
 
 **File:** `src/styles/index.css` (~26,716 lines)
 
-**Architecture:**
+**Architecture (v2.0 - January 2026):**
+
+The design system has been reorganized into a modular structure:
+
+```
+src/styles/
+├── base/
+│   ├── variables.css      # Design tokens (colors, spacing, typography)
+│   ├── typography.css     # Font definitions and text styles
+│   └── reset.css          # CSS reset and base element styles
+├── components/
+│   ├── audioplayer.css    # Audio player controls (NEW - Phase 1)
+│   ├── badges.css
+│   ├── buttons.css
+│   ├── cards.css
+│   ├── filters.css
+│   ├── forms.css
+│   ├── headers.css
+│   ├── modals.css
+│   ├── progress.css
+│   ├── queue.css          # Job queue UI (NEW)
+│   ├── readers.css        # Story reader component
+│   ├── skeleton.css       # Loading states
+│   ├── storygrid.css
+│   ├── toasts.css         # Notifications
+│   └── emptystates.css
+├── themes/
+│   └── dark.css           # Dark mode overrides
+├── utilities/
+│   ├── helpers.css        # Utility classes
+│   └── layout.css         # Layout utilities
+├── animations.css         # Animation keyframes (NEW)
+└── index.css              # Main entry point (imports all modules)
+```
+
+**CSS Architecture Layers:**
 
 ```css
-/* 1. CSS Variables (Tokens) */
+/* 1. CSS Custom Properties (Design Tokens) */
 :root {
-  --color-primary: ...;
+  --color-primary: hsl(340, 65%, 47%);
+  --color-secondary: hsl(245, 58%, 51%);
+  --color-accent: hsl(38, 92%, 50%);
   --spacing-md: ...;
   --font-size-base: ...;
 }
 
 /* 2. Reset & Base Styles */
 * { box-sizing: border-box; }
-body { font-family: 'Inter', sans-serif; }
+body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
 
 /* 3. Utility Classes */
 .container { max-width: 1200px; margin: 0 auto; }
@@ -592,10 +670,12 @@ body { font-family: 'Inter', sans-serif; }
 .btn { ... }
 .card { ... }
 .modal { ... }
+.audio-player { ... }  /* NEW - Phase 1 */
 
 /* 5. Animations */
-@keyframes fadeIn { ... }
+@keyframes slideDown { ... }  /* NEW */
 @keyframes slideUp { ... }
+@keyframes fadeIn { ... }
 
 /* 6. Dark Mode Overrides */
 [data-theme="dark"] {
@@ -609,11 +689,14 @@ body { font-family: 'Inter', sans-serif; }
 
 **Key Principles:**
 
-1. **No inline styles** - Use CSS classes
-2. **Component-based** - Reusable `.btn`, `.card`, `.badge`
-3. **Dark mode native** - `[data-theme="dark"]` attribute
-4. **Mobile-first** - Responsive breakpoints
-5. **Animation library** - Pre-built transitions
+1. **Modular organization** - Each component has its own CSS file
+2. **Design tokens** - Centralized CSS custom properties for theming
+3. **No inline styles** - Use CSS classes
+4. **Component-based** - Reusable `.btn`, `.card`, `.badge`, `.audio-player`
+5. **Dark mode native** - `[data-theme="dark"]` attribute with smooth transitions
+6. **Mobile-first** - Responsive breakpoints
+7. **Animation library** - Pre-built transitions and keyframes
+8. **Accessibility** - Focus-visible styles, semantic HTML
 
 ---
 
@@ -900,7 +983,7 @@ For Images:
 | **supabase/migrations/20240104_create_jobs_table.sql**         | Jobs table schema                     | -                                   | Database setup                  |
 | **supabase/migrations/20260104_add_on_insert_job_trigger.sql** | On-insert trigger setup               | pg_net extension                    | Real-time job processing        |
 
-_Last Updated: January 4, 2026_
+_Last Updated: January 8, 2026_
 
 For development guidelines, contributing patterns, and troubleshooting, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
