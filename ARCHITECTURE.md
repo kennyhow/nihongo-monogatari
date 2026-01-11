@@ -514,7 +514,7 @@ Component Infrastructure
 - Renders story content with side-by-side translation
 - Displays vocabulary notes on hover/click
 - Progress tracking (auto-saves reading position)
-- Audio playback controls (Phase 1 - January 2026)
+- Audio Player integration (Phase 1 Refactor)
 - Image display
 - Furigana toggle
 - English translation toggle
@@ -549,6 +549,13 @@ New comprehensive audio player with the following features:
 - **Play/Pause button** - Large, accessible button with icon
 - **Seek functionality** - Click anywhere on progress bar to jump to position
 - **Keyboard shortcuts** - Space to play/pause, arrow keys for seek
+- **Sticky positioning** - Player stays visible while scrolling through story
+- **Visual progress bar** - Clickable/draggable with gradient fill and handle
+- **Playback speed control** - Toggle between 1x and 1.25x speeds
+- **Time display** - Current time and total duration (MM:SS format)
+- **Play/Pause button** - Large, accessible button with icon
+- **Seek functionality** - Click anywhere on progress bar to jump to position
+- **Keyboard shortcuts** - Space to play/pause, arrow keys for seek
 - **Smooth animations** - slideDown animation on mount, smooth progress updates
 - **Progress tracking** - Real-time progress updates via subscription system
 - **Responsive design** - Works on mobile and desktop
@@ -556,7 +563,8 @@ New comprehensive audio player with the following features:
 
 **Implementation Details:**
 
-- `src/components/Reader.js`: Audio player UI integration (+430 lines)
+- `src/components/AudioPlayer.js`: Dedicated audio player component (+290 lines)
+- `src/components/Reader.js`: Audio player integration via component composition
 - `src/utils/audio.js`: Audio playback utilities with progress tracking (+154 lines)
 - `src/styles/components/audioplayer.css`: Dedicated audio player styles (198 lines)
 - `src/styles/animations.css`: Animation keyframes for UI transitions (41 lines)
@@ -574,6 +582,16 @@ User clicks play
     ↓
 Load audio from cache → Decode → Play from current position
 ```
+
+**`src/components/AudioPlayer.js`** (9,626 bytes)
+
+**Responsibilities:**
+
+- Dedicated sticky audio player bar
+- Playback state management (play/pause/resume)
+- Progress tracking and scrubbing
+- Playback speed control
+- Independent rendering (decoupled from Reader text updates)
 
 **`src/components/GeneratorModal.js`** (12,351 bytes)
 

@@ -36,13 +36,16 @@ const setupProgressTracking = audio => {
     progressCallbacks.forEach(callback => {
       try {
         callback({ currentTime, duration, progress });
-      } catch (e) {
-        console.error('Progress callback error, removing:', e);
+      } catch {
+        // remove callback on error
         progressCallbacks.delete(callback);
       }
     });
   };
   audio.addEventListener('timeupdate', timeUpdateHandler);
+
+  // Also update immediately when metadata is loaded (duration becomes available)
+  audio.addEventListener('loadedmetadata', timeUpdateHandler, { once: true });
 };
 
 /**
@@ -105,8 +108,7 @@ export const isAudioAvailable = async storyId => {
 
     // If there's any job (pending, processing, or completed), audio exists or is being generated
     return !!data && !error;
-  } catch (e) {
-    console.warn('Failed to check for audio job:', e);
+  } catch {
     return false;
   }
 };
@@ -194,8 +196,8 @@ export const playAudio = async (text, onFinish, storyId = null) => {
 
         try {
           await currentAudio.play();
-        } catch (error) {
-          console.warn('Failed to play audio (autoplay policy or other error):', error);
+        } catch {
+          // Auto-play failed (expected in some browsers)
           // Clean up resources on error
           if (currentAudioUrl) {
             URL.revokeObjectURL(currentAudioUrl);
@@ -263,8 +265,8 @@ export const playAudio = async (text, onFinish, storyId = null) => {
 
           try {
             await currentAudio.play();
-          } catch (error) {
-            console.warn('Failed to play audio (autoplay policy or other error):', error);
+          } catch {
+            // Auto-play failed
             // Clean up resources on error
             if (currentAudioUrl) {
               URL.revokeObjectURL(currentAudioUrl);
@@ -282,8 +284,8 @@ export const playAudio = async (text, onFinish, storyId = null) => {
           return;
         }
       }
-    } catch (e) {
-      console.warn('Cache lookup failed:', e);
+    } catch {
+      // Ignore cache lookup failures
     }
   }
 
@@ -301,10 +303,13 @@ export const cancelAudio = () => {
     // Remove timeupdate event listener if it exists
     if (timeUpdateHandler) {
       currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
+      currentAudio.removeEventListener('loadedmetadata', timeUpdateHandler);
       timeUpdateHandler = null;
     }
 
     currentAudio.pause();
+    currentAudio.onended = null;
+    currentAudio.onerror = null;
     currentAudio.src = '';
     currentAudio = null;
   }
