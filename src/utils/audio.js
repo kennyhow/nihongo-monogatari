@@ -13,6 +13,7 @@ import { supabase, getSession } from './supabase.js';
 
 // Track current playback state
 let currentAudio = null;
+let currentAudioUrl = null;
 let onFinishCallback = null;
 
 // Progress tracking subscribers
@@ -26,7 +27,7 @@ let timeUpdateHandler = null;
  * @param {HTMLAudioElement} audio - Audio element to track
  * @private
  */
-const setupProgressTracking = (audio) => {
+const setupProgressTracking = audio => {
   timeUpdateHandler = () => {
     const currentTime = audio.currentTime;
     const duration = audio.duration;
@@ -120,9 +121,10 @@ export const getAudioState = () => {
     isPaused: currentAudio ? currentAudio.paused : true,
     currentTime: currentAudio?.currentTime ?? 0,
     duration: currentAudio?.duration ?? 0,
-    progress: currentAudio && currentAudio.duration > 0
-      ? (currentAudio.currentTime / currentAudio.duration) * 100
-      : 0,
+    progress:
+      currentAudio && currentAudio.duration > 0
+        ? (currentAudio.currentTime / currentAudio.duration) * 100
+        : 0,
     playbackRate: currentAudio?.playbackRate ?? 1,
   };
 };
@@ -155,11 +157,15 @@ export const playAudio = async (text, onFinish, storyId = null) => {
 
       if (cachedResponse) {
         const blob = await cachedResponse.blob();
-        const url = URL.createObjectURL(blob);
+        currentAudioUrl = URL.createObjectURL(blob);
 
-        currentAudio = new Audio(url);
+        currentAudio = new Audio(currentAudioUrl);
         currentAudio.onended = () => {
-          URL.revokeObjectURL(url);
+          // URL will be revoked in cancelAudio or here if needed
+          if (currentAudioUrl) {
+            URL.revokeObjectURL(currentAudioUrl);
+            currentAudioUrl = null;
+          }
           if (timeUpdateHandler) {
             currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
             timeUpdateHandler = null;
@@ -169,7 +175,11 @@ export const playAudio = async (text, onFinish, storyId = null) => {
           }
         };
         currentAudio.onerror = () => {
-          URL.revokeObjectURL(url);
+          // URL will be revoked in cancelAudio or here if needed
+          if (currentAudioUrl) {
+            URL.revokeObjectURL(currentAudioUrl);
+            currentAudioUrl = null;
+          }
           if (timeUpdateHandler) {
             currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
             timeUpdateHandler = null;
@@ -182,7 +192,24 @@ export const playAudio = async (text, onFinish, storyId = null) => {
         // Add progress tracking
         setupProgressTracking(currentAudio);
 
-        await currentAudio.play();
+        try {
+          await currentAudio.play();
+        } catch (error) {
+          console.warn('Failed to play audio (autoplay policy or other error):', error);
+          // Clean up resources on error
+          if (currentAudioUrl) {
+            URL.revokeObjectURL(currentAudioUrl);
+            currentAudioUrl = null;
+          }
+          if (timeUpdateHandler) {
+            currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
+            timeUpdateHandler = null;
+          }
+          if (onFinishCallback) {
+            onFinishCallback();
+          }
+          return;
+        }
         return;
       }
 
@@ -202,10 +229,13 @@ export const playAudio = async (text, onFinish, storyId = null) => {
             })
           );
 
-          const url = URL.createObjectURL(data);
-          currentAudio = new Audio(url);
+          currentAudioUrl = URL.createObjectURL(data);
+          currentAudio = new Audio(currentAudioUrl);
           currentAudio.onended = () => {
-            URL.revokeObjectURL(url);
+            if (currentAudioUrl) {
+              URL.revokeObjectURL(currentAudioUrl);
+              currentAudioUrl = null;
+            }
             if (timeUpdateHandler) {
               currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
               timeUpdateHandler = null;
@@ -215,7 +245,10 @@ export const playAudio = async (text, onFinish, storyId = null) => {
             }
           };
           currentAudio.onerror = () => {
-            URL.revokeObjectURL(url);
+            if (currentAudioUrl) {
+              URL.revokeObjectURL(currentAudioUrl);
+              currentAudioUrl = null;
+            }
             if (timeUpdateHandler) {
               currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
               timeUpdateHandler = null;
@@ -228,7 +261,24 @@ export const playAudio = async (text, onFinish, storyId = null) => {
           // Add progress tracking
           setupProgressTracking(currentAudio);
 
-          await currentAudio.play();
+          try {
+            await currentAudio.play();
+          } catch (error) {
+            console.warn('Failed to play audio (autoplay policy or other error):', error);
+            // Clean up resources on error
+            if (currentAudioUrl) {
+              URL.revokeObjectURL(currentAudioUrl);
+              currentAudioUrl = null;
+            }
+            if (timeUpdateHandler) {
+              currentAudio.removeEventListener('timeupdate', timeUpdateHandler);
+              timeUpdateHandler = null;
+            }
+            if (onFinishCallback) {
+              onFinishCallback();
+            }
+            return;
+          }
           return;
         }
       }
@@ -257,6 +307,12 @@ export const cancelAudio = () => {
     currentAudio.pause();
     currentAudio.src = '';
     currentAudio = null;
+  }
+
+  // Revoke object URL to prevent memory leaks
+  if (currentAudioUrl) {
+    URL.revokeObjectURL(currentAudioUrl);
+    currentAudioUrl = null;
   }
 
   onFinishCallback = null;

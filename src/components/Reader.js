@@ -14,7 +14,7 @@ import {
   jumpBackward,
   seekTo,
   setPlaybackRate,
-  subscribeToProgress
+  subscribeToProgress,
 } from '../utils/audio.js';
 import { createEventManager } from '../utils/componentBase.js';
 import { KANA_DATA } from '../data/kana.js';
@@ -52,7 +52,9 @@ const DEFAULT_SPEED = 1.0;
  * @returns {string} Formatted time string (e.g., "2:34")
  */
 const formatTime = seconds => {
-  if (!seconds || isNaN(seconds)) return '0:00';
+  if (!seconds || isNaN(seconds)) {
+    return '0:00';
+  }
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -301,9 +303,10 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         <!-- Status row: status text + speed control -->
         <div class="audio-player__status-row">
           <span class="audio-player__status">
-            ${isNaN(audioProgress.duration)
-              ? '⏳ Loading...'
-              : `${isPaused ? '⏸ Paused' : '▶ Playing'} - ${formatTime(audioProgress.currentTime)} / ${formatTime(audioProgress.duration)}`
+            ${
+              isNaN(audioProgress.duration)
+                ? '⏳ Loading...'
+                : `${isPaused ? '⏸ Paused' : '▶ Playing'} - ${formatTime(audioProgress.currentTime)} / ${formatTime(audioProgress.duration)}`
             }
           </span>
           <select id="speed-control" class="audio-player__speed" title="Playback speed">
@@ -450,12 +453,14 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    * Setup keyboard shortcuts for audio control
    */
   const setupKeyboardShortcuts = () => {
-    events.delegate(document, 'keydown', e => {
+    events.on(document, 'keydown', e => {
       // Only handle if we're on the read page and audio is playing
-      if (!container || !isPlaying) return;
+      if (!container || !isPlaying) {
+        return;
+      }
 
       switch (e.code) {
-        case 'Space':
+        case 'Space': {
           e.preventDefault();
           const wasPaused = isPaused;
           isPaused = togglePause();
@@ -464,6 +469,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
             updateAudioUI();
           }
           break;
+        }
 
         case 'ShiftLeft':
         case 'ShiftRight':
@@ -484,7 +490,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           }
           break;
 
-        case 'BracketLeft':
+        case 'BracketLeft': {
           e.preventDefault();
           let currentIndex = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
           if (currentIndex === -1) {
@@ -507,8 +513,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           }
           logger.debug('Speed decreased to:', newSpeed);
           break;
+        }
 
-        case 'BracketRight':
+        case 'BracketRight': {
           e.preventDefault();
           let currentIndex2 = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
           if (currentIndex2 === -1) {
@@ -531,8 +538,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           }
           logger.debug('Speed increased to:', newSpeed2);
           break;
+        }
 
-        case 'Escape':
+        case 'Escape': {
           // Check if modal is open before stopping playback
           const modal = document.querySelector('.generator-modal');
           if (!modal || modal.classList.contains('hidden')) {
@@ -540,6 +548,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
             stopPlayback();
           }
           break;
+        }
       }
     });
   };
@@ -581,7 +590,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     }
 
     // Sort readings by text length (longest first) to handle overlapping matches
-    const sortedReadings = Array.from(readingMap.entries()).sort((a, b) => b[0].length - a[0].length);
+    const sortedReadings = Array.from(readingMap.entries()).sort(
+      (a, b) => b[0].length - a[0].length
+    );
 
     // Build result with replacements
     let result = text;
@@ -626,9 +637,16 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    * Find kana data by character
    */
   const findKanaData = char => {
+    if (!char || typeof char !== 'string') {
+      return null;
+    }
     const isKatakana = /[\u30A0-\u30FF]/.test(char);
     const system = isKatakana ? 'katakana' : 'hiragana';
-    return KANA_DATA[system].find(item => item.kana === char);
+    const kanaArray = KANA_DATA?.[system];
+    if (!kanaArray || !Array.isArray(kanaArray)) {
+      return null;
+    }
+    return kanaArray.find(item => item && item.kana === char);
   };
 
   /**
@@ -641,7 +659,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
     }
 
     const kanaData = findKanaData(char);
-    if (!kanaData) {
+    if (!kanaData || !kanaData.romaji) {
       return;
     }
 
@@ -718,7 +736,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       contentRoot.innerHTML = story.content
         .map((segment, index) => {
           // Generate furigana text if enabled
-          const furiganaText = showFurigana ? addFurigana(segment.jp, segment.readings) : segment.jp;
+          const furiganaText = showFurigana
+            ? addFurigana(segment.jp, segment.readings)
+            : segment.jp;
 
           return `
         <div class="segment" id="segment-${index}" data-index="${index}">
@@ -819,32 +839,46 @@ const Reader = ({ story, initialProgress, onComplete }) => {
    * Initial listeners
    */
   const setupListeners = () => {
-    events.on(container.querySelector('#complete-btn'), 'click', () => {
-      saveProgress(story.id, { completed: true, scrollPercent: 100 });
-      cancelAudio();
-      if (onComplete) {
-        onComplete();
-      }
-    });
-
-    events.on(container.querySelector('#close-settings'), 'click', toggleSettings);
-
-    events.on(container.querySelector('#toggle-furigana'), 'change', e => {
-      showFurigana = e.target.checked;
-      const jpTexts = container.querySelectorAll('.segment__jp-text');
-      jpTexts.forEach((el, i) => {
-        const segment = story.content[i];
-        const furiganaText = showFurigana ? addFurigana(segment.jp, segment.readings) : segment.jp;
-        el.innerHTML = wrapKana(furiganaText);
+    const completeBtn = container.querySelector('#complete-btn');
+    if (completeBtn) {
+      events.on(completeBtn, 'click', () => {
+        saveProgress(story.id, { completed: true, scrollPercent: 100 });
+        cancelAudio();
+        if (onComplete) {
+          onComplete();
+        }
       });
-    });
+    }
 
-    events.on(container.querySelector('#toggle-english'), 'change', e => {
-      showEnglish = e.target.checked;
-      container.querySelectorAll('.segment__en').forEach(el => {
-        el.classList.toggle('hidden', !showEnglish);
+    const closeSettingsBtn = container.querySelector('#close-settings');
+    if (closeSettingsBtn) {
+      events.on(closeSettingsBtn, 'click', toggleSettings);
+    }
+
+    const toggleFuriganaEl = container.querySelector('#toggle-furigana');
+    if (toggleFuriganaEl) {
+      events.on(toggleFuriganaEl, 'change', e => {
+        showFurigana = e.target.checked;
+        const jpTexts = container.querySelectorAll('.segment__jp-text');
+        jpTexts.forEach((el, i) => {
+          const segment = story.content[i];
+          const furiganaText = showFurigana
+            ? addFurigana(segment.jp, segment.readings)
+            : segment.jp;
+          el.innerHTML = wrapKana(furiganaText);
+        });
       });
-    });
+    }
+
+    const toggleEnglishEl = container.querySelector('#toggle-english');
+    if (toggleEnglishEl) {
+      events.on(toggleEnglishEl, 'change', e => {
+        showEnglish = e.target.checked;
+        container.querySelectorAll('.segment__en').forEach(el => {
+          el.classList.toggle('hidden', !showEnglish);
+        });
+      });
+    }
 
     // Hover lookup logic (desktop) - use delegation for kana-lookup
     const contentRoot = container.querySelector('#reader-content-root');
@@ -855,6 +889,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       }
 
       const char = target.dataset.char;
+      if (!char) {
+        return;
+      }
       showKanaTooltip(char, e.clientX, e.clientY, false);
     });
 
@@ -867,6 +904,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       }
 
       const char = target.dataset.char;
+      if (!char) {
+        return;
+      }
       showKanaTooltip(char, e.clientX, e.clientY, false);
     });
 
@@ -891,6 +931,9 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           // Tapping on a kana character
           e.preventDefault(); // Prevent text selection and other default behaviors
           const char = target.dataset.char;
+          if (!char) {
+            return;
+          }
           const touch = e.touches[0];
 
           // Toggle tooltip visibility
@@ -907,21 +950,27 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       { passive: false }
     );
 
-    events.on(container.querySelector('#toggle-side-by-side'), 'change', e => {
-      isSideBySide = e.target.checked;
-      const contentRoot = container.querySelector('#reader-content-root');
-      contentRoot?.classList.toggle('reader__content--side-by-side', isSideBySide);
-    });
-
-    events.on(container.querySelector('#toggle-images'), 'change', e => {
-      showImages = e.target.checked;
-      container.querySelectorAll('.segment__image-container').forEach(el => {
-        el.classList.toggle('hidden', !showImages);
+    const toggleSideBySideEl = container.querySelector('#toggle-side-by-side');
+    if (toggleSideBySideEl) {
+      events.on(toggleSideBySideEl, 'change', e => {
+        isSideBySide = e.target.checked;
+        const contentRoot = container.querySelector('#reader-content-root');
+        contentRoot?.classList.toggle('reader__content--side-by-side', isSideBySide);
       });
-      if (showImages) {
-        loadImages();
-      }
-    });
+    }
+
+    const toggleImagesEl = container.querySelector('#toggle-images');
+    if (toggleImagesEl) {
+      events.on(toggleImagesEl, 'change', e => {
+        showImages = e.target.checked;
+        container.querySelectorAll('.segment__image-container').forEach(el => {
+          el.classList.toggle('hidden', !showImages);
+        });
+        if (showImages) {
+          loadImages();
+        }
+      });
+    }
 
     // Use delegation for font size buttons
     events.delegate(container, 'click', '.font-size-btn', function () {
@@ -984,6 +1033,12 @@ const Reader = ({ story, initialProgress, onComplete }) => {
   };
 
   const startPlayback = () => {
+    // Clean up any existing subscription first to prevent memory leaks
+    if (unsubscribeProgress) {
+      unsubscribeProgress();
+      unsubscribeProgress = null;
+    }
+
     activeSegmentIndex = -1;
     isPlaying = true;
     isPaused = false;
@@ -1068,7 +1123,8 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           const apiKeys = getApiKeys();
           const apiKey = apiKeys.pollinations || import.meta.env.VITE_POLLINATIONS_AI_KEY;
           // Use dedicated imagePrompt if available, otherwise fall back to raw text
-          const imagePrompt = story.content[i].imagePrompt || `${story.content[i].jp}, anime style, soft colors`;
+          const imagePrompt =
+            story.content[i].imagePrompt || `${story.content[i].jp}, anime style, soft colors`;
           const prompt = encodeURIComponent(imagePrompt);
           const imageUrl = `https://gen.pollinations.ai/image/${prompt}?model=zimage`;
 
@@ -1144,7 +1200,10 @@ const Reader = ({ story, initialProgress, onComplete }) => {
         );
 
         if (audioJob?.status === 'completed' && audioJob.result?.audioPath) {
-          logger.debug('Audio generation complete! Downloading and caching...', audioJob.result.audioPath);
+          logger.debug(
+            'Audio generation complete! Downloading and caching...',
+            audioJob.result.audioPath
+          );
 
           downloadAndCacheAudio(story.id, audioJob.result.audioPath)
             .then(() => {
@@ -1184,7 +1243,10 @@ const Reader = ({ story, initialProgress, onComplete }) => {
           );
 
           if (audioJob?.status === 'completed' && audioJob.result?.audioPath) {
-            logger.debug('Audio generation complete! Downloading and caching...', audioJob.result.audioPath);
+            logger.debug(
+              'Audio generation complete! Downloading and caching...',
+              audioJob.result.audioPath
+            );
 
             downloadAndCacheAudio(story.id, audioJob.result.audioPath)
               .then(() => {
