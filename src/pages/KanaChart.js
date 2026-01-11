@@ -6,6 +6,36 @@
 import { KANA_DATA } from '../data/kana.js';
 import { createEventManager } from '../utils/componentBase.js';
 
+// Row labels for consonants
+const ROW_LABELS = [
+  '', // a row (no consonant)
+  'k',
+  's',
+  't',
+  'n',
+  'h',
+  'm',
+  'y',
+  'r',
+  'w',
+  'n', // basic rows
+  'g',
+  'z',
+  'd',
+  'b',
+  'p', // dakuten/handakuten rows
+];
+
+// Vowel column headers
+const VOWELS = ['a', 'i', 'u', 'e', 'o'];
+
+// Section breaks (row indices where sections end)
+const SECTIONS = [
+  { name: 'Basic', start: 0, end: 11 }, // a through n rows
+  { name: 'Dakuten (Voiced)', start: 11, end: 15 }, // g, z, d, b rows
+  { name: 'Handakuten (Semi-voiced)', start: 15, end: 16 }, // p row
+];
+
 const KanaChart = parentElement => {
   // Event manager
   const events = createEventManager();
@@ -18,11 +48,10 @@ const KanaChart = parentElement => {
     // Group into rows of 5
     const rows = [];
     for (let i = 0; i < data.length; i += 5) {
-      rows.push(data.slice(i, i + 5).reverse()); // Reverse to show a, i, u, e, o from left if needed?
-      // Japanese charts usually go:
-      // a i u e o
-      // ka ki ku ke ko
-      // Actually, let's just keep the order as provided in kana.js
+      rows.push({
+        label: ROW_LABELS[Math.floor(i / 5)] || '',
+        kana: data.slice(i, i + 5),
+      });
     }
 
     const html = `
@@ -30,32 +59,60 @@ const KanaChart = parentElement => {
         <div class="kana-header">
           <h1>Kana Chart</h1>
           <p class="text-muted">Master the basics of Japanese reading.</p>
-          
+
           <div class="kana-toggle">
             <button class="toggle-btn ${currentSystem === 'hiragana' ? 'active' : ''}" data-system="hiragana">Hiragana</button>
             <button class="toggle-btn ${currentSystem === 'katakana' ? 'active' : ''}" data-system="katakana">Katakana</button>
           </div>
         </div>
 
-        <div class="kana-grid-container">
-          <div class="kana-grid">
-            ${data
-              .map(
-                item => `
-              <div class="kana-card ${!item.kana ? 'kana-card--empty' : ''}">
-                ${
-                  item.kana
-                    ? `
-                  <div class="kana-char">${item.kana}</div>
-                  <div class="kana-romaji">${item.romaji}</div>
+        <div class="kana-sections">
+          ${SECTIONS.map(
+            section => `
+            <div class="kana-section">
+              <h3 class="kana-section-title">${section.name}</h3>
+              <div class="kana-grid-wrapper">
+                <!-- Column headers -->
+                <div class="kana-grid kana-grid--with-labels">
+                  <div class="kana-corner"></div>
+                  ${VOWELS.map(
+                    vowel => `
+                    <div class="kana-header-cell">${vowel}</div>
+                  `
+                  ).join('')}
+                </div>
+
+                <!-- Rows -->
+                ${rows
+                  .slice(section.start, section.end)
+                  .map(
+                    row => `
+                  <div class="kana-grid kana-grid--with-labels">
+                    <div class="kana-row-label">${row.label || ' '}</div>
+                    ${row.kana
+                      .map(
+                        item => `
+                      <div class="kana-card ${!item.kana ? 'kana-card--empty' : ''}">
+                        ${
+                          item.kana
+                            ? `
+                          <div class="kana-char">${item.kana}</div>
+                          <div class="kana-romaji">${item.romaji}</div>
+                        `
+                            : ''
+                        }
+                      </div>
+                    `
+                      )
+                      .join('')}
+                  </div>
                 `
-                    : ''
-                }
+                  )
+                  .join('')}
               </div>
-            `
-              )
-              .join('')}
-          </div>
+            </div>
+          `
+          ).join('')}
         </div>
 
         <div class="kana-info">
@@ -64,6 +121,8 @@ const KanaChart = parentElement => {
             <ul>
               <li><strong>Hiragana</strong> is used for native Japanese words and grammar.</li>
               <li><strong>Katakana</strong> is used for foreign loanwords and emphasis.</li>
+              <li><strong>Dakuten</strong> (゛) adds voice: ka→ga, sa→za, ta→da, ha→ba</li>
+              <li><strong>Handakuten</strong> (゜) makes 'p' sounds: ha→pa</li>
               <li>Practice writing each character to build muscle memory!</li>
             </ul>
           </div>
@@ -96,7 +155,7 @@ const kanaStyles = document.createElement('style');
 kanaStyles.textContent = `
   .kana-page {
     padding-bottom: var(--space-12);
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
   }
 
@@ -130,47 +189,114 @@ kanaStyles.textContent = `
     box-shadow: var(--shadow-sm);
   }
 
-  .kana-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: var(--space-3);
-    margin-bottom: var(--space-8);
+  /* Sections */
+  .kana-sections {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
   }
 
-  .kana-card {
+  .kana-section {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4) var(--space-2);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+  }
+
+  .kana-section-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-primary);
+    margin: 0 0 var(--space-5) 0;
     text-align: center;
-    transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+  }
+
+  .kana-grid-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  /* Grid with labels */
+  .kana-grid--with-labels {
+    grid-template-columns: auto repeat(5, 1fr);
+  }
+
+  .kana-grid {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  /* Column headers */
+  .kana-corner {
+    width: var(--space-8);
+  }
+
+  .kana-header-cell {
+    text-align: center;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    font-size: var(--text-sm);
+    padding: var(--space-2);
+  }
+
+  /* Row labels */
+  .kana-row-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    font-size: var(--text-sm);
+    width: var(--space-8);
+    padding: var(--space-2);
+  }
+
+  /* Kana cards */
+  .kana-card {
+    background: var(--color-bg-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    text-align: center;
+    transition: transform var(--duration-fast), box-shadow var(--duration-fast), border-color var(--duration-fast);
+    min-height: var(--space-12);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .kana-card:not(.kana-card--empty):hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    border-color: var(--color-primary-light);
+    border-color: var(--color-primary);
+    background: var(--color-surface);
   }
 
   .kana-card--empty {
     background: transparent;
-    border: none;
+    border: 1px dashed var(--color-border);
+    opacity: 0.3;
   }
 
   .kana-char {
     font-family: var(--font-display);
-    font-size: var(--text-3xl);
+    font-size: var(--text-2xl);
     color: var(--color-text);
     margin-bottom: var(--space-1);
+    line-height: 1.2;
   }
 
   .kana-romaji {
-    font-size: var(--text-xs);
+    font-size: 10px;
     color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    text-transform: lowercase;
+    letter-spacing: 0.02em;
   }
 
+  /* Info section */
   .kana-info {
     margin-top: var(--space-10);
   }
@@ -196,6 +322,7 @@ kanaStyles.textContent = `
     padding-left: var(--space-6);
     position: relative;
     color: var(--color-text-secondary);
+    line-height: 1.6;
   }
 
   .info-card li::before {
@@ -206,9 +333,48 @@ kanaStyles.textContent = `
     font-weight: bold;
   }
 
-  @media (max-width: 480px) {
+  /* Dark mode adjustments */
+  [data-theme="dark"] .kana-section {
+    background: var(--color-bg-subtle);
+    border-color: var(--color-border);
+  }
+
+  [data-theme="dark"] .kana-card {
+    background: var(--color-surface);
+  }
+
+  [data-theme="dark"] .kana-card:not(.kana-card--empty):hover {
+    background: var(--color-bg-subtle);
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .kana-grid--with-labels {
+      grid-template-columns: auto repeat(5, 1fr);
+      gap: var(--space-1);
+    }
+
+    .kana-card {
+      padding: var(--space-2);
+      min-height: var(--space-10);
+    }
+
     .kana-char {
-      font-size: var(--text-2xl);
+      font-size: var(--text-xl);
+    }
+
+    .kana-romaji {
+      font-size: 9px;
+    }
+
+    .kana-corner,
+    .kana-row-label {
+      width: var(--space-6);
+      font-size: 10px;
+    }
+
+    .kana-section {
+      padding: var(--space-4);
     }
   }
 `;
