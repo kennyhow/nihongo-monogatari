@@ -35,12 +35,12 @@ function buildStoryPrompt(
 
   const levelGuidelines = {
     N5: `GRAMMAR: Use only polite form (desu/masu), present tense, simple sentences (subject-object-verb). Use wa/ga particles correctly.
-VOCABULARY: Restrict to JLPT N5 vocabulary list (~800 words). Use hiragana for words where kanji is uncommon.
+VOCABULARY: Restrict to JLPT N5 vocabulary list (~800 words). Use standard Kanji for vocabulary appropriate for this level. Do not convert common words to Hiragana.
 SENTENCE STRUCTURE: Keep sentences under 15 characters. Use simple conjunctions (soshite, demo).
 TOPICS: Daily life, family, food, school, hobbies. Concrete, familiar situations.
 CULTURAL CONTEXT: Include basic cultural elements like bowing, seasons, traditional foods.`,
     N4: `GRAMMAR: Use te-form, nai-form, dictionary form for short sentences. Basic conjunctions (kara, node, keredomo). Simple conditional (tara).
-VOCABULARY: Restrict to JLPT N4 vocabulary (~1,500 words). Introduce common kanji with furigana.
+VOCABULARY: Restrict to JLPT N4 vocabulary (~1,500 words). Use standard Kanji.
 SENTENCE STRUCTURE: Mix simple and compound sentences. 15-25 characters per sentence.
 TOPICS: Daily routines, past experiences, future plans, simple opinions, weather, travel.
 CULTURAL CONTEXT: Include customs, festivals, seasonal activities, social etiquette.`,
@@ -109,6 +109,11 @@ ${levelGuidelines[level] || levelGuidelines['N3']}
 === STORY PARAMETERS ===
 - Target Length: ${lengthMap[length]}
 ${instructions ? `- Special Instructions: ${instructions}` : ''}
+
+=== KANJI USAGE ===
+- Write the 'jp' text using standard mixed Kanji/Kana.
+- DO NOT write words entirely in Hiragana if they usually use Kanji (e.g., write "時計", not "とけい").
+- We have a furigana system, so Kanji is preferred even for beginners.
 
 === QUALITY REQUIREMENTS ===
 
