@@ -6,34 +6,14 @@
 import { KANA_DATA } from '../data/kana.js';
 import { createEventManager } from '../utils/componentBase.js';
 
-// Row labels for consonants
-const ROW_LABELS = [
-  '', // a row (no consonant)
-  'k',
-  's',
-  't',
-  'n',
-  'h',
-  'm',
-  'y',
-  'r',
-  'w',
-  'n', // basic rows
-  'g',
-  'z',
-  'd',
-  'b',
-  'p', // dakuten/handakuten rows
-];
-
 // Vowel column headers
 const VOWELS = ['a', 'i', 'u', 'e', 'o'];
 
-// Section breaks (row indices where sections end)
+// Section definitions with their names
 const SECTIONS = [
-  { name: 'Basic', start: 0, end: 11 }, // a through n rows
-  { name: 'Dakuten (Voiced)', start: 11, end: 15 }, // g, z, d, b rows
-  { name: 'Handakuten (Semi-voiced)', start: 15, end: 16 }, // p row
+  { key: 'basic', name: 'Basic' },
+  { key: 'dakuten', name: 'Dakuten (Voiced)' },
+  { key: 'handakuten', name: 'Handakuten (Semi-voiced)' },
 ];
 
 const KanaChart = parentElement => {
@@ -44,15 +24,6 @@ const KanaChart = parentElement => {
 
   const render = () => {
     const data = KANA_DATA[currentSystem];
-
-    // Group into rows of 5
-    const rows = [];
-    for (let i = 0; i < data.length; i += 5) {
-      rows.push({
-        label: ROW_LABELS[Math.floor(i / 5)] || '',
-        kana: data.slice(i, i + 5),
-      });
-    }
 
     const html = `
       <div class="kana-page animate-fade-in">
@@ -83,21 +54,20 @@ const KanaChart = parentElement => {
                 </div>
 
                 <!-- Rows -->
-                ${rows
-                  .slice(section.start, section.end)
+                ${data[section.key]
                   .map(
                     row => `
                   <div class="kana-grid kana-grid--with-labels">
                     <div class="kana-row-label">${row.label || ' '}</div>
                     ${row.kana
                       .map(
-                        item => `
-                      <div class="kana-card ${!item.kana ? 'kana-card--empty' : ''}">
+                        (kana, i) => `
+                      <div class="kana-card ${!kana ? 'kana-card--empty' : ''}">
                         ${
-                          item.kana
+                          kana
                             ? `
-                          <div class="kana-char">${item.kana}</div>
-                          <div class="kana-romaji">${item.romaji}</div>
+                          <div class="kana-char">${kana}</div>
+                          <div class="kana-romaji">${row.romaji[i]}</div>
                         `
                             : ''
                         }
