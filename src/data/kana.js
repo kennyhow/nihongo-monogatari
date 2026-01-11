@@ -1,5 +1,24 @@
 // Kana data organized as explicit rows for maintainability
 // Each row represents a consonant + vowel combination (a, i, u, e, o)
+
+// Helper: Convert section-based structure to flat array for backward compatibility
+function flattenKanaData(kanaSections) {
+  const result = [];
+  for (const section of Object.values(kanaSections)) {
+    for (const row of section) {
+      for (let i = 0; i < row.kana.length; i++) {
+        if (row.kana[i]) {
+          result.push({
+            kana: row.kana[i],
+            romaji: row.romaji[i],
+          });
+        }
+      }
+    }
+  }
+  return result;
+}
+
 export const KANA_DATA = {
   hiragana: {
     basic: [
@@ -58,3 +77,12 @@ export const KANA_DATA = {
     ],
   },
 };
+
+// Backward compatibility: flattened arrays for Reader.js tooltip lookups
+// These are lazily computed on first access
+const _flatHiragana = flattenKanaData(KANA_DATA.hiragana);
+const _flatKatakana = flattenKanaData(KANA_DATA.katakana);
+
+// Export flattened arrays with the same keys as before for backward compatibility
+KANA_DATA.hiraganaflat = _flatHiragana;
+KANA_DATA.katakanaflat = _flatKatakana;

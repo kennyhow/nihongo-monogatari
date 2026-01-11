@@ -641,7 +641,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
       return null;
     }
     const isKatakana = /[\u30A0-\u30FF]/.test(char);
-    const system = isKatakana ? 'katakana' : 'hiragana';
+    const system = isKatakana ? 'katakanaflat' : 'hiraganaflat';
     const kanaArray = KANA_DATA?.[system];
     if (!kanaArray || !Array.isArray(kanaArray)) {
       return null;
