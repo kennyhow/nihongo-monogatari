@@ -68,7 +68,7 @@ const handleRoute = async () => {
   // Show loading state
   rootElement.innerHTML = `
     <div class="empty-state animate-fade-in">
-      <div class="skeleton skeleton--card" style="max-width: 600px; margin: 0 auto;"></div>
+      <div class="skeleton skeleton--card skeleton--centered"></div>
     </div>
   `;
 

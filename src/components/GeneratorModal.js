@@ -239,7 +239,7 @@ const GeneratorModal = ({ onClose, onGenerate: _onGenerate }) => {
       // Update UI to show job is queued
       submitBtn.innerHTML = '✓ Queued';
       loadingState.innerHTML = `
-        <div class="generator-loading__spinner" style="border-top-color: var(--color-success);"></div>
+        <div class="generator-loading__spinner generator-loading__spinner--success"></div>
         <div class="generator-loading__text">
           <strong>Story is being generated!</strong>
           <p>Check the Queue page to track progress</p>

@@ -31,3 +31,8 @@
 .skeleton--circle {
   border-radius: var(--radius-full);
 }
+
+.skeleton--centered {
+  max-width: 600px;
+  margin: 0 auto;
+}

@@ -68,7 +68,7 @@ const StoryCard = story => {
       ${
         isInProgress
           ? `
-        <div class="progress mb-4" style="height: 4px;">
+        <div class="progress progress--thin mb-4">
           <div class="progress__bar" style="width: ${progress.scrollPercent || 0}%;"></div>
         </div>
       `

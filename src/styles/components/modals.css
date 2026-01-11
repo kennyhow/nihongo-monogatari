@@ -228,6 +228,10 @@
   animation: spin 1s linear infinite;
 }
 
+.generator-loading__spinner--success {
+  border-top-color: var(--color-success);
+}
+
 .generator-loading__text p {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
