@@ -82,28 +82,6 @@ const StoryCard = story => {
   `;
 };
 
-// Add badge success style
-const cardStyles = document.createElement('style');
-cardStyles.textContent = `
-  .badge--success {
-    background: var(--color-success-light);
-    color: var(--color-success);
-  }
-  
-  .story-card .delete-story-btn {
-    opacity: 0;
-    transition: opacity var(--duration-fast);
-  }
-  
-  .story-card:hover .delete-story-btn {
-    opacity: 1;
-  }
-  
-  .story-card .delete-story-btn:hover {
-    color: var(--color-error);
-    background: var(--color-error-light);
-  }
-`;
-document.head.appendChild(cardStyles);
+// Styles now in external CSS: src/styles/components/cards.css
 
 export default StoryCard;

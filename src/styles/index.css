@@ -23,11 +23,15 @@
 @import url('./components/skeleton.css');
 @import url('./components/progress.css');
 @import url('./components/queue.css');
-@import url('./components/storygrid.css');
 @import url('./components/readers.css');
 @import url('./components/filters.css');
 @import url('./components/emptystates.css');
 @import url('./components/audioplayer.css');
+
+/* Pages */
+@import url('./pages/home.css');
+@import url('./pages/settings.css');
+@import url('./pages/kanachart.css');
 
 /* Themes */
 @import url('./themes/dark.css');

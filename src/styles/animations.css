@@ -129,7 +129,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -143,5 +144,15 @@
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   TOAST ANIMATIONS
+   ============================================ */
+@keyframes toastSlideOut {
+  to {
+    opacity: 0;
+    transform: translateX(100%);
   }
 }

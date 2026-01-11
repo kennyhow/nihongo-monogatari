@@ -64,3 +64,24 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
+
+/* Story card badge styles */
+.badge--success {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+/* Story card delete button */
+.story-card .delete-story-btn {
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+}
+
+.story-card:hover .delete-story-btn {
+  opacity: 1;
+}
+
+.story-card .delete-story-btn:hover {
+  color: var(--color-error);
+  background: var(--color-error-light);
+}

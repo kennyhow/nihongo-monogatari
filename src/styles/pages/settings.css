@@ -1,0 +1,314 @@
+/**
+ * Settings Page Styles
+ *
+ * User preferences and app configuration page styles.
+ * Uses BEM naming conventions and CSS custom properties.
+ */
+
+/* =============================================
+   LAYOUT
+   ============================================= */
+
+.settings-page {
+  max-width: 700px;
+  margin: 0 auto;
+  padding-bottom: var(--space-16);
+}
+
+.settings-header {
+  margin-bottom: var(--space-8);
+}
+
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.settings-footer {
+  margin-top: var(--space-12);
+  text-align: center;
+}
+
+/* =============================================
+   SECTIONS
+   ============================================= */
+
+.settings-section {
+  padding: var(--space-6);
+}
+
+.settings-section__title {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* =============================================
+   SETTING ITEMS
+   ============================================= */
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-item__label {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.setting-item__desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.setting-item--danger {
+  /* Additional styles for dangerous actions */
+}
+
+.setting-item--critical {
+  background: var(--color-error-light);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
+}
+
+/* =============================================
+   THEME TOGGLE
+   ============================================= */
+
+.theme-toggle-group {
+  display: flex;
+  gap: var(--space-2);
+  padding: 4px;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.theme-btn {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.theme-btn.active {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* =============================================
+   VIEW MODE SELECTOR
+   ============================================= */
+
+.view-mode-selector {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.view-mode-option {
+  cursor: pointer;
+  position: relative;
+}
+
+.view-mode-option input {
+  position: absolute;
+  opacity: 0;
+}
+
+.view-mode-option__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-bg-subtle);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.view-mode-option input:checked + .view-mode-option__card {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.view-mode-option__preview {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.view-mode-option__preview--stacked {
+  flex-direction: column;
+}
+
+.preview-box {
+  width: 24px;
+  height: 16px;
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+/* =============================================
+   TOGGLE SWITCH
+   ============================================= */
+
+.toggle {
+  position: relative;
+  width: 48px;
+  height: 28px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle__slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  transition: var(--duration-fast);
+}
+
+.toggle__slider::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
+  background: white;
+  border-radius: 50%;
+  transition: var(--duration-fast);
+}
+
+.toggle input:checked + .toggle__slider {
+  background: var(--color-primary);
+}
+
+.toggle input:checked + .toggle__slider::before {
+  transform: translateX(20px);
+}
+
+/* =============================================
+   AUTHENTICATION
+   ============================================= */
+
+.auth-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-bg-subtle);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.auth-status__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-status__badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-success);
+  background: var(--color-success-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  width: fit-content;
+}
+
+.auth-status__email {
+  font-weight: 500;
+  font-size: var(--text-sm);
+}
+
+.auth-status__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.auth-form__actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.auth-form__actions .btn {
+  flex: 1;
+}
+
+/* =============================================
+   ABOUT SECTION
+   ============================================= */
+
+.about-info {
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.about-logo {
+  font-size: var(--text-3xl);
+  color: var(--color-primary);
+  margin-bottom: var(--space-2);
+}
+
+.about-name {
+  /* Additional styling for app name */
+}
+
+.about-version {
+  /* Additional styling for version */
+}
+
+.about-credits {
+  /* Additional styling for credits */
+}
+
+/* =============================================
+   UTILITY CLASSES
+   ============================================= */
+
+.hidden-input {
+  display: none;
+}
+
+.btn--danger {
+  color: var(--color-error);
+}
+
+.btn--critical {
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}

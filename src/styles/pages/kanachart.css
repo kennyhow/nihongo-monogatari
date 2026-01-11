@@ -1,0 +1,254 @@
+/* ============================================
+   KANA CHART PAGE
+   Styles for the Kana Chart page component
+   ============================================ */
+
+/* ============================================
+   PAGE CONTAINER
+   ============================================ */
+.kana-page {
+  padding-bottom: var(--space-12);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   HEADER SECTION
+   ============================================ */
+.kana-header {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+/* Toggle buttons */
+.kana-toggle {
+  display: inline-flex;
+  background: var(--color-bg-subtle);
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-6);
+}
+
+.kana-toggle__btn {
+  padding: var(--space-2) var(--space-6);
+  border: none;
+  background: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--duration-fast);
+  color: var(--color-text-muted);
+}
+
+.kana-toggle__btn--active {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================
+   SECTIONS
+   ============================================ */
+.kana-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.kana-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+}
+
+.kana-section__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 0 0 var(--space-5) 0;
+  text-align: center;
+}
+
+/* ============================================
+   GRID LAYOUT
+   ============================================ */
+.kana-grid-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.kana-grid {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.kana-grid--with-labels {
+  grid-template-columns: auto repeat(5, 1fr);
+}
+
+/* ============================================
+   GRID LABELS
+   ============================================ */
+/* Column headers */
+.kana-grid__corner {
+  width: var(--space-8);
+}
+
+.kana-grid__header-cell {
+  text-align: center;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: var(--text-sm);
+  padding: var(--space-2);
+}
+
+/* Row labels */
+.kana-grid__row-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: var(--text-sm);
+  width: var(--space-8);
+  padding: var(--space-2);
+}
+
+/* ============================================
+   KANA CARDS
+   ============================================ */
+.kana-card {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  text-align: center;
+  transition:
+    transform var(--duration-fast),
+    box-shadow var(--duration-fast),
+    border-color var(--duration-fast);
+  min-height: var(--space-12);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.kana-card:not(.kana-card--empty):hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+.kana-card--empty {
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  opacity: 0.3;
+}
+
+.kana-card__char {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+  line-height: 1.2;
+}
+
+.kana-card__romaji {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================
+   INFO SECTION
+   ============================================ */
+.kana-info {
+  margin-top: var(--space-10);
+}
+
+.kana-info__card {
+  background: var(--color-bg-subtle);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+}
+
+.kana-info__card h3 {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
+}
+
+.kana-info__list {
+  list-style: none;
+  padding: 0;
+}
+
+.kana-info__item {
+  margin-bottom: var(--space-3);
+  padding-left: var(--space-6);
+  position: relative;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.kana-info__item::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+[data-theme='dark'] .kana-section {
+  background: var(--color-bg-subtle);
+  border-color: var(--color-border);
+}
+
+[data-theme='dark'] .kana-card {
+  background: var(--color-surface);
+}
+
+[data-theme='dark'] .kana-card:not(.kana-card--empty):hover {
+  background: var(--color-bg-subtle);
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 600px) {
+  .kana-grid--with-labels {
+    grid-template-columns: auto repeat(5, 1fr);
+    gap: var(--space-1);
+  }
+
+  .kana-card {
+    padding: var(--space-2);
+    min-height: var(--space-10);
+  }
+
+  .kana-card__char {
+    font-size: var(--text-xl);
+  }
+
+  .kana-card__romaji {
+    font-size: 9px;
+  }
+
+  .kana-grid__corner,
+  .kana-grid__row-label {
+    width: var(--space-6);
+    font-size: 10px;
+  }
+
+  .kana-section {
+    padding: var(--space-4);
+  }
+}

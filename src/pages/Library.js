@@ -4,6 +4,7 @@
  * Refactored for modularity and granular updates.
  */
 
+import '../styles/pages/library.css';
 import StoryCard from '../components/StoryCard.js';
 import { sampleStories } from '../data/stories.js';
 import GeneratorModal from '../components/GeneratorModal.js';
@@ -311,39 +312,6 @@ const Library = parentElement => {
   };
 };
 
-// Styles (same as before)
-const libraryStyles = document.createElement('style');
-libraryStyles.textContent = `
-  .library-page { padding-bottom: var(--space-16); }
-  .library-header { margin-bottom: var(--space-8); }
-  .library-header__top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }
-  .library-controls { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-8); }
-  @media (min-width: 768px) { .library-controls { flex-direction: row; align-items: center; flex-wrap: wrap; } }
-  .search-box { position: relative; flex: 1; min-width: 200px; max-width: 400px; }
-  .search-box__icon { position: absolute; left: var(--space-4); top: 50%; transform: translateY(-50%); opacity: 0.5; }
-  .search-box__input { width: 100%; padding: var(--space-3) var(--space-4) var(--space-3) var(--space-10); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-full); font-size: var(--text-sm); transition: all var(--duration-fast); }
-  .search-box__input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-light); }
-  .search-box__clear { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; opacity: 0.5; }
-  .search-box__clear.hidden { display: none; }
-  .library-options { display: flex; align-items: center; gap: var(--space-3); margin-left: auto; }
-  .view-toggle { display: flex; gap: var(--space-1); padding: var(--space-1); background: var(--color-bg-subtle); border-radius: var(--radius-md); }
-  .view-toggle .icon-btn { width: 32px; height: 32px; font-size: var(--text-sm); }
-  .view-toggle .icon-btn.active { background: var(--color-surface); box-shadow: var(--shadow-sm); }
-  .story-grid--list { display: flex; flex-direction: column; gap: var(--space-4); }
-  .story-grid--list .story-card { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto 1fr auto; gap: var(--space-2) var(--space-4); padding: var(--space-4); }
-  .story-grid--list .story-card__header { grid-column: 1 / -1; }
-  .story-grid--list .story-card .btn { width: auto; }
-
-  /* Auto width select */
-  .form-select--auto { width: auto; min-width: 150px; }
-
-  /* Delete animation */
-  .story-card--deleting {
-    transform: scale(0.9);
-    opacity: 0;
-    transition: all 0.2s ease-out;
-  }
-`;
-document.head.appendChild(libraryStyles);
+// Styles now in external CSS: src/styles/pages/library.css
 
 export default Library;

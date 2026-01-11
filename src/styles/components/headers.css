@@ -88,9 +88,120 @@
   transform: scaleX(1);
 }
 
+/* Nav Link with Badge */
+.nav-link--with-badge {
+  position: relative;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Mobile-only Utility */
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .mobile-only {
+    display: flex;
+  }
+}
+
+/* Theme Icon Button */
+.theme-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
 /* Mobile nav hidden by default */
 @media (max-width: 639px) {
   .nav-link {
     display: none;
   }
+}
+
+/* Mobile Menu */
+.mobile-menu {
+  position: absolute;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  animation: menuSlideDown 0.3s var(--ease-out);
+}
+
+.mobile-menu.hidden {
+  display: none;
+}
+
+.mobile-menu__nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  gap: var(--space-2);
+}
+
+.mobile-menu__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast);
+}
+
+.mobile-menu__link:hover {
+  background: var(--color-bg-subtle);
+}
+
+@keyframes menuSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Theme Toggle Animation */
+#theme-toggle {
+  transition: transform 0.3s var(--ease-spring);
+}
+
+#theme-toggle.theme-icon--animating {
+  transform: scale(1.2) rotate(180deg);
 }

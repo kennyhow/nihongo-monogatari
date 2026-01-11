@@ -101,27 +101,6 @@ const Read = parentElement => {
   }
 };
 
-// Add continue prompt styles
-const readStyles = document.createElement('style');
-readStyles.textContent = `
-  .continue-prompt {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 50vh;
-    padding: var(--space-4);
-  }
-  
-  .continue-prompt__card {
-    text-align: center;
-    max-width: 400px;
-    padding: var(--space-8);
-  }
-  
-  .continue-prompt__card h2 {
-    margin-bottom: var(--space-2);
-  }
-`;
-document.head.appendChild(readStyles);
+// Styles now in external CSS: src/styles/components/readers.css
 
 export default Read;

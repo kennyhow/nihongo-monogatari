@@ -148,6 +148,7 @@ localStorage.nihongo_theme; // String - 'light' | 'dark'
 ```
 
 **Key Changes (January 2026):**
+
 - **Furigana system overhaul:** Kanji readings now stored in structured `readings` array
 - **Better kanji handling:** Readings ONLY include words with kanji (not hiragana/katakana-only words)
 - **Complete word matching:** Each reading entry is a complete word, not partial fragments
@@ -444,40 +445,64 @@ Jobs process **sequentially** (one at a time):
 ```
 Header (Persistent)
 ├── Logo/Brand
-├── Navigation Links
-├── Theme Toggle
-├── Queue Badge
-└── Mobile Menu
+├── Navigation Links (Home, Library, Queue, Settings, Kana Chart)
+├── Theme Toggle (Light/Dark mode switch)
+├── Queue Badge (Background job count)
+└── Mobile Menu (Hamburger for mobile)
 
 Pages (Route-Dependent)
 ├── Home
-│   ├── Hero Section
-│   ├── Stats Dashboard
-│   ├── Continue Reading
-│   └── Featured Stories
+│   ├── Hero Section (App introduction)
+│   ├── Stats Dashboard (Stories read, generated, available)
+│   ├── Continue Reading (Resume progress)
+│   └── Featured Stories (Story cards)
 ├── Library
-│   ├── Search Bar
-│   ├── Filters (Level, Sort)
-│   └── Story Grid/List
+│   ├── Search Bar (Real-time filtering)
+│   ├── Filters (Level, Sort, View toggle)
+│   ├── Generator Modal (Story creation)
+│   └── Story Grid/List (Card display)
 ├── Read
-│   ├── Story Loader
-│   └── Reader Component
+│   ├── Story Loader (Continue/restart prompts)
+│   └── Reader Component (Full reading interface)
+│       ├── Audio Player (Sticky playback controls)
+│       ├── Story Content (Segments with translations)
+│       ├── Kana Tooltips (Pronunciation guide)
+│       ├── Settings Panel (Reading preferences)
+│       └── Comprehension Questions
 ├── Queue
-│   ├── Queue List
-│   └── Progress Indicators
+│   ├── Queue List (All background jobs)
+│   ├── Filter Tabs (All, Pending, Processing, Completed, Failed)
+│   ├── Progress Indicators (Status badges)
+│   └── Action Buttons (Retry, Cancel, Dismiss)
 ├── Settings
-│   ├── Display Options
-│   ├── Data Management
-│   └── Import/Export
+│   ├── Authentication (Sign in/out, cloud sync)
+│   ├── Display Options (Theme, view mode)
+│   ├── Reading Preferences (Furigana, images, font size)
+│   ├── Data Management (Import/export, cache)
+│   └── API Configuration (Gemini, Pollinations keys)
 └── KanaChart
-    └── Interactive Kana Table
+    ├── System Toggle (Hiragana/Katakana)
+    ├── Grid Display (Interactive character tables)
+    └── Pronunciation Guide (Romaji readings)
 
-Shared Components
-├── StoryCard (Library, Home)
-├── Reader (Read page)
-├── GeneratorModal (All pages)
-├── Toast (Global notifications)
-└── ProgressBar (Loading states)
+Shared Components (Reused across pages)
+├── StoryCard (Library, Home - Story preview with progress)
+├── Reader (Read page - Main reading interface)
+├── GeneratorModal (Library, Header - Story creation form)
+├── Toast (All pages - Notification system)
+├── ProgressBar (All pages - Loading states)
+└── Header (All pages - Navigation)
+
+Component Infrastructure
+├── componentBase.js (Lifecycle management)
+│   ├── createComponent() (Mount/unmount)
+│   ├── createElement() (HTML to DOM)
+│   ├── createState() (Reactive state)
+│   └── useCleanup() (Memory management)
+└── eventManager.js (Event handling)
+    ├── on() (Individual listeners)
+    ├── delegate() (Event delegation)
+    └── cleanup() (Automatic removal)
 ```
 
 #### Key Components
@@ -606,43 +631,205 @@ Submit → api.generateStory() → Save → Navigate to Reader
 
 ---
 
-### 7. Design System
+### 7. Utilities and Services Layer
 
-**File:** `src/styles/index.css` (~26,716 lines)
+**Entry Points:** `src/utils/` and `src/services/`
 
-**Architecture (v2.0 - January 2026):**
+The utilities layer provides core infrastructure services used throughout the application.
 
-The design system has been reorganized into a modular structure:
+#### Core Infrastructure Utilities
+
+**`src/utils/componentBase.js`** (4,643 bytes)
+
+- `createElement(html)`: Converts HTML strings to DOM elements
+- `createComponent()`: Component lifecycle management
+- `createEventManager()`: Returns EventManager instance
+- `createState(initial)`: Reactive state management with subscriptions
+- `useCleanup(callback)`: Registers cleanup callbacks (prevents memory leaks)
+- `debounce(fn, delay)`: Performance optimization for frequent events
+
+**`src/utils/eventManager.js`** (6,289 bytes)
+
+- `EventManager` class with automatic cleanup on route changes
+- `on(element, event, handler)`: Individual event listeners
+- `delegate(parent, event, selector, handler)`: Event delegation for dynamic content
+- `cleanup()`: Remove all registered listeners
+- Supports passive event listeners for scroll/touch optimization
+
+**`src/utils/router.js`** (3,686 bytes)
+
+- Hash-based SPA routing (`#/home`, `#/library`, `#/read?id=123`)
+- Lazy loading of page modules for performance
+- Automatic cleanup of event listeners and subscriptions
+- Query parameter parsing via `getRouteInfo()`
+- Error boundaries for failed page loads
+
+#### Data Management Utilities
+
+**`src/utils/storage.js`** (11,466 bytes) - _Critical utility_
+
+- Manages localStorage with cloud sync via Supabase
+- Handles: themes, settings, API keys, stories, progress tracking
+- Provides bidirectional sync (local ↔ cloud)
+- Includes data cleanup and full sync capabilities
+- Functions: `getStories()`, `saveStories()`, `syncToCloud()`, `syncFromCloud()`
+
+**`src/utils/imageStorage.js`**
+
+- Two-tier caching: browser Cache API + Supabase Storage
+- Segment-based image storage for stories
+- Automatic cache management and cleanup
+
+**`src/utils/jobQueue.js`** (~300 lines)
+
+- Client-side job queue manager with polling
+- `createJob()`: Queue a new job for processing
+- `retryJob()`: Retry failed jobs
+- `cancelJob()`: Cancel pending jobs
+- `subscribe()`: Observer pattern for real-time UI updates
+- Polls database every 3 seconds for job status changes
+
+#### Audio System
+
+**`src/utils/audio.js`**
+
+- Comprehensive audio playback system
+- Manages cached and cloud-based TTS audio
+- Handles progress tracking, playback controls, state management
+- Integrates with both browser Cache API and Supabase Storage
+- Functions: `playAudio()`, `togglePause()`, `setPlaybackRate()`, `seekTo()`
+
+**`src/utils/audioHelpers.js`**
+
+- WAV header creation for PCM audio data
+- Base64 to binary conversion for audio processing
+- Low-level audio format handling
+
+**`src/utils/audioQueue.js`** - _DEPRECATED_
+
+- Legacy TTS queue system
+- Replaced by background job system
+- Kept for backward compatibility
+
+#### Services
+
+**`src/services/api.js`**
+
+- Story generation via Google Gemini AI
+- Text-to-speech audio generation
+- Background job creation and management
+- API key validation and error handling
+- Backward compatibility with synchronous generation
+
+**`src/utils/supabase.js`**
+
+- Centralized authentication (signIn, signUp, signOut)
+- Environment-based configuration
+- Graceful fallback when credentials are missing
+
+#### Architectural Patterns
+
+**Singleton Pattern:** Most utilities export single instances (`jobQueue`, `router`)
+
+**Observer Pattern:** Subscribers for state updates (jobs, progress, events)
+
+**Factory Pattern:** Component creation functions (`createComponent()`, `createElement()`)
+
+**Strategy Pattern:** Dual caching strategies (local + cloud)
+
+---
+
+### 8. Design System
+
+**Architecture (v3.0 - January 2026):**
+
+The design system has been fully refactored with all inline CSS removed and a new `pages/` directory for page-specific styles.
 
 ```
 src/styles/
-├── base/
+├── base/ (3 files)
 │   ├── variables.css      # Design tokens (colors, spacing, typography)
 │   ├── typography.css     # Font definitions and text styles
 │   └── reset.css          # CSS reset and base element styles
-├── components/
-│   ├── audioplayer.css    # Audio player controls (NEW - Phase 1)
-│   ├── badges.css
-│   ├── buttons.css
-│   ├── cards.css
-│   ├── filters.css
-│   ├── forms.css
-│   ├── headers.css
-│   ├── modals.css
-│   ├── progress.css
-│   ├── queue.css          # Job queue UI (NEW)
-│   ├── readers.css        # Story reader component
-│   ├── skeleton.css       # Loading states
-│   ├── storygrid.css
-│   ├── toasts.css         # Notifications
-│   └── emptystates.css
-├── themes/
+├── components/ (13 files)
+│   ├── audioplayer.css    # Audio player controls (Phase 1)
+│   ├── badges.css         # Badge components
+│   ├── buttons.css        # Button system
+│   ├── cards.css          # Card components
+│   ├── emptystates.css    # Empty state components
+│   ├── filters.css        # Filter controls
+│   ├── forms.css          # Form elements
+│   ├── headers.css        # Header components
+│   ├── modals.css         # Modal dialogs + Generator Modal styles
+│   ├── progress.css       # Progress indicators
+│   ├── queue.css          # Job queue UI
+│   ├── readers.css        # Reader components (518 lines)
+│   ├── skeleton.css       # Loading skeletons
+│   └── toasts.css         # Notifications
+├── pages/ (4 files)        # NEW - Page-specific styles
+│   ├── home.css           # Home page (196 lines)
+│   ├── kanachart.css      # Kana Chart page (252 lines)
+│   ├── library.css        # Library page (177 lines)
+│   └── settings.css       # Settings page (314 lines)
+├── themes/ (1 file)
 │   └── dark.css           # Dark mode overrides
-├── utilities/
-│   ├── helpers.css        # Utility classes
+├── utilities/ (2 files)
+│   ├── helpers.css        # Utility helpers
 │   └── layout.css         # Layout utilities
-├── animations.css         # Animation keyframes (NEW)
-└── index.css              # Main entry point (imports all modules)
+├── animations.css         # Global animations (157 lines)
+└── index.css              # Main entry point (41 lines)
+```
+
+**Total CSS:** 3,408 lines across 26 files
+
+**Key Changes (January 2026):**
+
+- ✅ **All inline CSS removed** from JavaScript files (~1,270 lines extracted)
+- ✅ **New `pages/` directory** for page-specific styles
+- ✅ **No `createElement('style')` patterns** remain in codebase
+- ✅ **BEM naming conventions** consistently applied
+- ✅ **CSS custom properties** used throughout (design tokens)
+- ✅ **Proper import order** in index.css following ITCSS methodology
+
+**Import Order (index.css):**
+
+```css
+/* Base Layer */
+@import './base/variables.css';
+@import './base/reset.css';
+@import './base/typography.css';
+
+/* Utilities */
+@import './utilities/layout.css';
+@import './utilities/helpers.css';
+
+/* Components (alphabetical) */
+@import './components/audioplayer.css';
+@import './components/badges.css';
+@import './components/buttons.css';
+@import './components/cards.css';
+@import './components/emptystates.css';
+@import './components/filters.css';
+@import './components/forms.css';
+@import './components/headers.css';
+@import './components/modals.css';
+@import './components/progress.css';
+@import './components/queue.css';
+@import './components/readers.css';
+@import './components/skeleton.css';
+@import './components/toasts.css';
+
+/* Pages (alphabetical) */
+@import './pages/home.css';
+@import './pages/kanachart.css';
+@import './pages/library.css';
+@import './pages/settings.css';
+
+/* Themes */
+@import './themes/dark.css';
+
+/* Animations */
+@import './animations.css';
 ```
 
 **CSS Architecture Layers:**
@@ -689,14 +876,16 @@ body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
 
 **Key Principles:**
 
-1. **Modular organization** - Each component has its own CSS file
+1. **Modular organization** - Each component/page has its own CSS file
 2. **Design tokens** - Centralized CSS custom properties for theming
-3. **No inline styles** - Use CSS classes
+3. **No inline styles** - All CSS in external files (no JavaScript CSS injection)
 4. **Component-based** - Reusable `.btn`, `.card`, `.badge`, `.audio-player`
-5. **Dark mode native** - `[data-theme="dark"]` attribute with smooth transitions
-6. **Mobile-first** - Responsive breakpoints
-7. **Animation library** - Pre-built transitions and keyframes
-8. **Accessibility** - Focus-visible styles, semantic HTML
+5. **Page-specific styles** - Dedicated `pages/` directory for page-level CSS
+6. **BEM naming** - Consistent Block-Element-Modifier naming convention
+7. **Dark mode native** - `[data-theme="dark"]` attribute with smooth transitions
+8. **Mobile-first** - Responsive breakpoints
+9. **Animation library** - Pre-built transitions and keyframes
+10. **Accessibility** - Focus-visible styles, semantic HTML
 
 ---
 
@@ -978,12 +1167,15 @@ For Images:
 | **src/pages/Settings.js**                                      | User preferences                      | storage.js                          | router.js                       |
 | **src/pages/KanaChart.js**                                     | Kana reference                        | data/kana.js                        | router.js                       |
 | **src/data/kana.js**                                           | Kana character data                   | None                                | KanaChart.js                    |
-| **src/styles/index.css**                                       | Design system                         | None                                | All components                  |
+| **src/styles/index.css**                                       | Design system entry point             | None                                | All components                  |
+| **src/styles/base/variables.css**                              | Design tokens                         | None                                | All CSS files                   |
+| **src/styles/components/**                                     | Component CSS (13 files)              | variables.css                       | Respective components           |
+| **src/styles/pages/**                                          | Page-specific CSS (4 files)           | variables.css                       | Respective pages                |
 | **index.html**                                                 | HTML entry point                      | Google Fonts                        | main.js                         |
 | **supabase/migrations/20240104_create_jobs_table.sql**         | Jobs table schema                     | -                                   | Database setup                  |
 | **supabase/migrations/20260104_add_on_insert_job_trigger.sql** | On-insert trigger setup               | pg_net extension                    | Real-time job processing        |
 
-_Last Updated: January 8, 2026_
+_Last Updated: January 11, 2026_
 
 For development guidelines, contributing patterns, and troubleshooting, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

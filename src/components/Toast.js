@@ -123,14 +123,4 @@ export const toast = {
   info: (message, options = {}) => showToast({ message, type: 'info', ...options }),
 };
 
-// Add the slide out animation to the stylesheet
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes toastSlideOut {
-    to {
-      opacity: 0;
-      transform: translateX(100%);
-    }
-  }
-`;
-document.head.appendChild(style);
+// Keyframe animation now in external CSS: src/styles/animations.css

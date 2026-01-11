@@ -53,3 +53,242 @@
   background: var(--color-bg-subtle);
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
+
+/* ============================================
+   GENERATOR MODAL
+   ============================================ */
+
+/* Modal variant */
+.generator-modal {
+  max-width: 550px;
+}
+
+/* Keyframe animations */
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalSlideDown {
+  to {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+}
+
+/* Form label enhancements */
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.form-label__required {
+  color: var(--color-error);
+}
+
+.form-label__optional {
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.form-hint {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Level Selector */
+.level-selector {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+}
+
+@media (max-width: 600px) {
+  .level-selector {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .level-selector {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.level-option {
+  cursor: pointer;
+}
+
+.level-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.level-option__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-4);
+  background: var(--color-bg-subtle);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-fast);
+}
+
+.level-option input:checked + .level-option__card {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+
+.level-option:hover .level-option__card {
+  border-color: var(--color-border-hover);
+}
+
+.level-option__emoji {
+  font-size: 1.5rem;
+  margin-bottom: var(--space-2);
+}
+
+.level-option__name {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.level-option__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+  display: block;
+}
+
+/* Length Selector */
+.length-selector {
+  display: flex;
+  gap: var(--space-2);
+  background: var(--color-bg-subtle);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.length-option {
+  flex: 1;
+  cursor: pointer;
+}
+
+.length-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.length-option__btn {
+  display: block;
+  text-align: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all var(--duration-fast);
+}
+
+.length-option input:checked + .length-option__btn {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Loading State */
+.generator-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-4);
+}
+
+.generator-loading.hidden {
+  display: none;
+}
+
+.generator-loading__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.generator-loading__text p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+/* Random Topic Button */
+.input-with-action {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.input-with-action .form-input {
+  flex: 1;
+}
+
+.random-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  user-select: none;
+}
+
+.random-btn:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.random-btn:active {
+  transform: scale(0.95);
+}
+
+.random-btn.dice-animate {
+  animation: diceRoll 0.5s ease-out;
+}
+
+@keyframes diceRoll {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg) scale(1.1);
+  }
+  50% {
+    transform: rotate(-15deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(5deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
