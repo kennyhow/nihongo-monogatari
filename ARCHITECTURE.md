@@ -420,7 +420,7 @@ Jobs process **sequentially** (one at a time):
 
 2. **TTS Generation:** `gemini-2.5-flash-preview-tts` (via Edge Function)
    - Converts Japanese text to natural-sounding speech
-   - Returns WAV audio data stored in Supabase Storage
+   - Returns OGG_OPUS audio data stored in Supabase Storage
    - Rate limiting managed server-side (30s delays)
 
 3. **Image Generation:** `pollinations.ai` API (client-side)
@@ -719,9 +719,9 @@ The utilities layer provides core infrastructure services used throughout the ap
 
 **`src/utils/audioHelpers.js`**
 
-- WAV header creation for PCM audio data
 - Base64 to binary conversion for audio processing
 - Low-level audio format handling
+- Note: OGG_OPUS format is self-contained (no manual header creation needed)
 
 **`src/utils/audioQueue.js`** - _DEPRECATED_
 
@@ -1008,8 +1008,8 @@ body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
 └──────┬──────┘             │
        ↓                    │
 ┌─────────────┐             │
-│WAV Audio    │             │
-│Data         │             │
+│OGG_OPUS     │             │
+│Audio Data   │             │
 └──────┬──────┘             │
        ↓                    │
 ┌─────────────┐             │
@@ -1140,7 +1140,7 @@ For Images:
 ```javascript
 // Audio
 `story-audio-${storyId}` // Browser Cache
-`audio-cache/${storyId}.wav` // Supabase Storage
+`audio-cache/${storyId}.ogg` // Supabase Storage
 // Images
 `/images/${storyId}/segment-${index}` // Browser Cache
 `image-cache/${storyId}_${index}.png`; // Supabase Storage
@@ -1169,7 +1169,7 @@ For Images:
 | **src/utils/jobQueue.js**                                      | Background job queue manager          | supabase.js                         | Header.js, Queue.js, api.js     |
 | **src/utils/audio.js**                                         | Audio playback                        | audioHelpers.js, storage.js         | Reader.js                       |
 | **src/utils/audioQueue.js**                                    | **DEPRECATED** - TTS queue (legacy)   | Do not use - replaced by job system | -                               |
-| **src/utils/audioHelpers.js**                                  | WAV format utilities                  | None                                | audio.js                        |
+| **src/utils/audioHelpers.js**                                  | Audio format utilities (OGG_OPUS)     | None                                | audio.js                        |
 | **src/utils/imageStorage.js**                                  | Image caching                         | storage.js                          | Reader.js                       |
 | **src/services/api.js**                                        | Client-side API calls                 | @supabase/supabase-js, jobQueue.js  | GeneratorModal.js               |
 | **supabase/functions/job-creator/**                            | Job creation endpoint                 | @supabase/supabase-js               | api.js (via jobQueue)           |

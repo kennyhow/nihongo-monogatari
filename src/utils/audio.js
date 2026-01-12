@@ -218,16 +218,24 @@ export const playAudio = async (text, onFinish, storyId = null) => {
       // 2. Check Supabase Storage (from background job system)
       const session = await getSession();
       if (session) {
-        // Use the existing audio-cache bucket with user-specific path
-        const filePath = `${session.user.id}/${storyId}/full-story.wav`;
-        const { data, error } = await supabase.storage.from('audio-cache').download(filePath);
+        // Try OGG format first (new), then fallback to WAV (old) for backward compatibility
+        let filePath = `${session.user.id}/${storyId}/full-story.ogg`;
+        let { data, error } = await supabase.storage.from('audio-cache').download(filePath);
+        let mimeType = 'audio/ogg';
+
+        // If OGG not found, try old WAV format for backward compatibility
+        if (error || !data) {
+          filePath = `${session.user.id}/${storyId}/full-story.wav`;
+          ({ data, error } = await supabase.storage.from('audio-cache').download(filePath));
+          mimeType = 'audio/wav';
+        }
 
         if (data && !error) {
           // Save to local cache for next time
           await cache.put(
             cacheKey,
             new Response(data, {
-              headers: { 'Content-Type': 'audio/wav' },
+              headers: { 'Content-Type': mimeType },
             })
           );
 

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createWavHeader, base64ToBytes } from '../utils/audioHelpers.js';
+import { base64ToBytes } from '../utils/audioHelpers.js';
 import { getApiKeys } from '../utils/storage.js';
 import { STORY_LEVELS, STORY_LENGTHS, isValidStoryLevel, isValidStory } from '../types.js';
 
@@ -169,11 +169,11 @@ export const generateStory = async (topic, level, instructions = '', length = 'm
 /**
  * Generate text-to-speech audio using Google Generative AI
  *
- * Converts Japanese text to natural-sounding speech audio in WAV format.
+ * Converts Japanese text to natural-sounding speech audio in OGG_OPUS format.
  * Uses the gemini-2.5-flash-preview-tts model with the "Aoede" voice.
  *
  * @param {string} text - Japanese text to convert to speech
- * @returns {Promise<Blob|null>} WAV audio blob or null if generation fails
+ * @returns {Promise<Blob|null>} OGG audio blob or null if generation fails
  * @throws {Error} If API key is missing
  *
  * @example
@@ -199,6 +199,10 @@ export const generateSpeech = async text => {
         responseModalities: ['AUDIO'],
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } },
+          // Use OGG_OPUS format for better time-stretching quality at slow speeds
+          audioConfig: {
+            audioEncoding: 'OGG_OPUS',
+          },
         },
       },
     });
@@ -221,22 +225,8 @@ export const generateSpeech = async text => {
           const mimeType = part.inlineData.mimeType;
           const bytes = base64ToBytes(part.inlineData.data);
 
-          // Parse Sample Rate
-          let sampleRate = 24000;
-          const rateMatch = mimeType.match(/rate=(\d+)/);
-          if (rateMatch) {
-            sampleRate = parseInt(rateMatch[1], 10);
-          }
-
-          // Wrap PCM in WAV
-          const header = createWavHeader(bytes.length, sampleRate);
-          // Use a combined Uint8Array for Blob to avoid issues
-          const headerBytes = new Uint8Array(header);
-          const wavBytes = new Uint8Array(header.byteLength + bytes.length);
-          wavBytes.set(headerBytes);
-          wavBytes.set(bytes, header.byteLength);
-
-          return new Blob([wavBytes], { type: 'audio/wav' });
+          // OGG_OPUS is self-contained - no header wrapping needed
+          return new Blob([bytes], { type: 'audio/ogg' });
         }
       }
     }

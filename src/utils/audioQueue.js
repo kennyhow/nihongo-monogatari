@@ -160,7 +160,7 @@ class AudioQueueManager {
         await cache.put(
           cacheKey,
           new Response(audioBlob, {
-            headers: { 'Content-Type': 'audio/wav' },
+            headers: { 'Content-Type': 'audio/ogg' },
           })
         );
 
@@ -170,7 +170,7 @@ class AudioQueueManager {
         // 2. Upload to Supabase Storage
         const session = await getSession();
         if (session) {
-          const filePath = `${session.user.id}/${pending.storyId}/full-story.wav`;
+          const filePath = `${session.user.id}/${pending.storyId}/full-story.ogg`;
           await supabase.storage.from('audio-cache').upload(filePath, audioBlob, { upsert: true });
         }
       } else {

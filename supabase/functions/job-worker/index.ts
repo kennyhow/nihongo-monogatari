@@ -280,6 +280,10 @@ async function processAudioGeneration(parameters: any, jobId: string): Promise<a
       responseModalities: ['AUDIO'],
       speechConfig: {
         voiceConfig: { prebuiltVoiceConfig: { voiceName } },
+        // Use OGG_OPUS format for better time-stretching quality at slow speeds
+        audioConfig: {
+          audioEncoding: 'OGG_OPUS',
+        },
       },
     },
   });
@@ -316,21 +320,12 @@ async function processAudioGeneration(parameters: any, jobId: string): Promise<a
         }
 
         // Convert base64 to Uint8Array
+        // OGG_OPUS is self-contained - no header needed
         const binaryString = atob(base64Data);
-        const pcmBytes = new Uint8Array(binaryString.length);
+        audioData = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
-          pcmBytes[i] = binaryString.charCodeAt(i);
+          audioData[i] = binaryString.charCodeAt(i);
         }
-
-        // Create WAV header
-        const wavHeader = createWavHeader(pcmBytes.length, sampleRate);
-        const headerBytes = new Uint8Array(wavHeader);
-        const wavBytes = new Uint8Array(headerBytes.length + pcmBytes.length);
-
-        wavBytes.set(headerBytes, 0);
-        wavBytes.set(pcmBytes, headerBytes.length);
-
-        audioData = wavBytes;
         break;
       }
     }
@@ -355,12 +350,12 @@ async function processAudioGeneration(parameters: any, jobId: string): Promise<a
 
     // Upload to Supabase Storage (private bucket)
     // Using existing audio-cache bucket with user-specific path
-    const fileName = `${userId}/${storyId}/full-story.wav`;
+    const fileName = `${userId}/${storyId}/full-story.ogg`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('audio-cache')
       .upload(fileName, audioData, {
-        contentType: 'audio/wav',
+        contentType: 'audio/ogg',
         upsert: true,
       });
 
@@ -373,7 +368,7 @@ async function processAudioGeneration(parameters: any, jobId: string): Promise<a
     // Return result (file path, not public URL - client will use authenticated download)
     return {
       audioPath: fileName, // Just the path, client will use authenticated Supabase client
-      format: 'wav',
+      format: 'ogg',
       size: audioData.length,
       sampleRate: sampleRate,
       duration: null, // Could calculate if needed
@@ -382,46 +377,6 @@ async function processAudioGeneration(parameters: any, jobId: string): Promise<a
     console.error(`[Job ${jobId}] Audio generation failed:`, error);
     throw error;
   }
-}
-
-/**
- * Create WAV header for PCM audio data
- */
-function createWavHeader(pcmDataLength: number, sampleRate = 24000): ArrayBuffer {
-  const numChannels = 1;
-  const bitsPerSample = 16;
-  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-  const blockAlign = numChannels * (bitsPerSample / 8);
-
-  const buffer = new ArrayBuffer(44);
-  const view = new DataView(buffer);
-
-  const writeString = (view: DataView, offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-
-  // "RIFF" chunk descriptor
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + pcmDataLength, true); // File size
-  writeString(view, 8, 'WAVE');
-
-  // "fmt " sub-chunk
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true); // Subchunk1Size
-  view.setUint16(20, 1, true); // AudioFormat (1 = PCM)
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitsPerSample, true);
-
-  // "data" sub-chunk
-  writeString(view, 36, 'data');
-  view.setUint32(40, pcmDataLength, true);
-
-  return buffer;
 }
 
 /**

@@ -976,7 +976,7 @@ const Reader = ({ story, initialProgress, onComplete }) => {
 /**
  * Download audio from Supabase Storage and cache it in browser cache
  * @param {string} storyId - Story ID
- * @param {string} audioPath - Path in Supabase Storage (e.g., userId/storyId/full-story.wav)
+ * @param {string} audioPath - Path in Supabase Storage (e.g., userId/storyId/full-story.ogg)
  * @returns {Promise<void>}
  */
 const downloadAndCacheAudio = async (storyId, audioPath) => {
@@ -993,17 +993,26 @@ const downloadAndCacheAudio = async (storyId, audioPath) => {
     }
 
     // Download from Supabase Storage
-    const { data, error } = await supabase.storage.from('audio-cache').download(audioPath);
+    // First try the provided audioPath (should be .ogg for new audio)
+    let { data, error } = await supabase.storage.from('audio-cache').download(audioPath);
+    let mimeType = 'audio/ogg';
+
+    // If download failed and audioPath is .ogg, try fallback to .wav for backward compatibility
+    if ((error || !data) && audioPath.endsWith('.ogg')) {
+      const wavPath = audioPath.replace('/full-story.ogg', '/full-story.wav');
+      ({ data, error } = await supabase.storage.from('audio-cache').download(wavPath));
+      mimeType = 'audio/wav';
+    }
 
     if (error || !data) {
       throw new Error(error?.message || 'Failed to download audio');
     }
 
-    // Cache in browser
+    // Cache in browser with correct MIME type
     await cache.put(
       cacheKey,
       new Response(data, {
-        headers: { 'Content-Type': 'audio/wav' },
+        headers: { 'Content-Type': mimeType },
       })
     );
 
