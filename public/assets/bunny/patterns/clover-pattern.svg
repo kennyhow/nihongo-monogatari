@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <title>Four-Leaf Clover</title>
+  <desc>A lucky four-leaf clover for decorative patterns</desc>
+
+  <!-- Clover Stem -->
+  <path d="M 50 55 Q 50 70 48 85" stroke="#27ae60" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Four Leaves -->
+  <!-- Top Left -->
+  <ellipse cx="40" cy="30" rx="12" ry="15" fill="#27ae60"/>
+  <ellipse cx="40" cy="30" rx="6" ry="8" fill="#2ecc71"/>
+  <!-- Top Right -->
+  <ellipse cx="60" cy="30" rx="12" ry="15" fill="#27ae60"/>
+  <ellipse cx="60" cy="30" rx="6" ry="8" fill="#2ecc71"/>
+  <!-- Bottom Left -->
+  <ellipse cx="40" cy="50" rx="12" ry="15" fill="#27ae60"/>
+  <ellipse cx="40" cy="50" rx="6" ry="8" fill="#2ecc71"/>
+  <!-- Bottom Right -->
+  <ellipse cx="60" cy="50" rx="12" ry="15" fill="#27ae60"/>
+  <ellipse cx="60" cy="50" rx="6" ry="8" fill="#2ecc71"/>
+
+  <!-- Center -->
+  <circle cx="50" cy="40" r="6" fill="#27ae60"/>
+</svg>

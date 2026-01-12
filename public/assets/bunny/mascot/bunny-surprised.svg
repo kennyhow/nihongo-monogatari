@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>Usagi-san Surprised</title>
+  <desc>A cute white bunny mascot with a surprised expression, wide eyes and open mouth</desc>
+
+  <!-- Left Ear - Perked Up Straight -->
+  <ellipse cx="65" cy="42" rx="18" ry="40" fill="#ffffff" transform="rotate(-8 65 42)"/>
+  <ellipse cx="65" cy="45" rx="10" ry="30" fill="#f4a8b8" transform="rotate(-8 65 45)"/>
+
+  <!-- Right Ear - Perked Up Straight -->
+  <ellipse cx="135" cy="42" rx="18" ry="40" fill="#ffffff" transform="rotate(8 135 42)"/>
+  <ellipse cx="135" cy="45" rx="10" ry="30" fill="#f4a8b8" transform="rotate(8 135 45)"/>
+
+  <!-- Body -->
+  <ellipse cx="100" cy="150" rx="50" ry="45" fill="#ffffff"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="95" r="45" fill="#ffffff"/>
+
+  <!-- Red Hachimaki (Japanese Headband) -->
+  <rect x="52" y="75" width="96" height="18" rx="4" fill="#e74c3c"/>
+  <rect x="85" y="72" width="30" height="24" rx="3" fill="#c0392b"/>
+
+  <!-- Hachimaki Tails -->
+  <path d="M 52 84 Q 35 80 30 95 Q 28 100 32 98 Q 40 92 52 90" fill="#e74c3c"/>
+  <path d="M 148 84 Q 165 80 170 95 Q 172 100 168 98 Q 160 92 148 90" fill="#e74c3c"/>
+
+  <!-- Eyes - Wide and Surprised -->
+  <ellipse cx="85" cy="88" rx="11" ry="13" fill="#2d3436"/>
+  <ellipse cx="115" cy="88" rx="11" ry="13" fill="#2d3436"/>
+  <!-- Eye Highlights -->
+  <circle cx="88" cy="84" r="3.5" fill="#ffffff"/>
+  <circle cx="118" cy="84" r="3.5" fill="#ffffff"/>
+  <!-- Extra Highlight for Wide-Eyed Look -->
+  <circle cx="82" cy="90" r="2" fill="#ffffff"/>
+  <circle cx="112" cy="90" r="2" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="100" rx="6" ry="4" fill="#f4a8b8"/>
+
+  <!-- Mouth - Small 'O' Shape (Surprised) -->
+  <ellipse cx="100" cy="110" rx="5" ry="6" fill="none" stroke="#2d3436" stroke-width="2.5"/>
+
+  <!-- Whiskers -->
+  <line x1="55" y1="95" x2="75" y2="98" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="55" y1="102" x2="75" y2="103" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="98" x2="145" y2="95" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="103" x2="145" y2="102" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Arms - Slightly Raised (Surprised Gesture) -->
+  <ellipse cx="65" cy="140" rx="12" ry="20" fill="#ffffff" transform="rotate(-25 65 140)"/>
+  <ellipse cx="135" cy="140" rx="12" ry="20" fill="#ffffff" transform="rotate(25 135 140)"/>
+
+  <!-- Small Cotton Tail -->
+  <circle cx="100" cy="185" r="8" fill="#ffffff"/>
+</svg>

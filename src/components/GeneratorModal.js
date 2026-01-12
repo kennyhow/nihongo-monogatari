@@ -128,10 +128,10 @@ const GeneratorModal = ({ onClose, onGenerate: _onGenerate }) => {
         
         <!-- Loading State -->
         <div id="loading-state" class="generator-loading hidden">
-          <div class="generator-loading__spinner"></div>
+          <img src="/assets/bunny/mascot/bunny-thinking.svg" alt="Usagi-san is thinking..." class="generator-loading__bunny">
           <div class="generator-loading__text">
             <strong>Generating your story...</strong>
-            <p>This may take 10-30 seconds</p>
+            <p>Usagi-san is writing something wonderful! This may take 10-30 seconds</p>
           </div>
         </div>
       </form>

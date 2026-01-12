@@ -759,9 +759,9 @@ The utilities layer provides core infrastructure services used throughout the ap
 
 ### 8. Design System
 
-**Architecture (v3.0 - January 2026):**
+**Architecture (v4.0 - January 2026):**
 
-The design system has been fully refactored with all inline CSS removed and a new `pages/` directory for page-specific styles.
+The design system features a **Japanese-inspired bunny theme** with fresh, vibrant colors and custom mascot assets.
 
 ```
 src/styles/
@@ -775,42 +775,109 @@ src/styles/
 │   ├── buttons.css        # Button system
 │   ├── cards.css          # Card components
 │   ├── emptystates.css    # Empty state components
-│   ├── filters.css        # Filter controls
+│   ├── filters.css        # Filter controls + Empty state bunny styles
 │   ├── forms.css          # Form elements
-│   ├── headers.css        # Header components
-│   ├── modals.css         # Modal dialogs + Generator Modal styles
+│   ├── headers.css        # Header components + Bunny logo styles
+│   ├── modals.css         # Modal dialogs + Generator Modal bunny animation
 │   ├── progress.css       # Progress indicators
 │   ├── queue.css          # Job queue UI
 │   ├── readers.css        # Reader components (518 lines)
 │   ├── skeleton.css       # Loading skeletons
-│   └── toasts.css         # Notifications
-├── pages/ (4 files)        # NEW - Page-specific styles
-│   ├── home.css           # Home page (196 lines)
+│   └── toasts.css         # Notifications + Bunny mascot icons
+├── pages/ (4 files)        # Page-specific styles
+│   ├── home.css           # Home page + Bunny hero mascot & patterns
 │   ├── kanachart.css      # Kana Chart page (252 lines)
 │   ├── library.css        # Library page (177 lines)
 │   └── settings.css       # Settings page (314 lines)
 ├── themes/ (1 file)
-│   └── dark.css           # Dark mode overrides
-├── utilities/ (2 files)
+│   └── dark.css           # Dark mode overrides + Bunny dark palette
+├── utilities/ (3 files)
 │   ├── helpers.css        # Utility helpers
-│   └── layout.css         # Layout utilities
-├── animations.css         # Global animations (157 lines)
+│   ├── layout.css         # Layout utilities
+│   └── bunny-patterns.css # NEW - Bunny-themed utility classes
+├── animations.css         # Global animations + Bunny animations
 └── index.css              # Main entry point (41 lines)
 ```
 
-**Total CSS:** 3,408 lines across 26 files
+**Total CSS:** ~3,600 lines across 27 files
 
-**Key Changes (January 2026):**
+**Color Palette - Fresh & Vibrant Bunny Theme:**
 
-- ✅ **All inline CSS removed** from JavaScript files (~1,270 lines extracted)
-- ✅ **New `pages/` directory** for page-specific styles
-- ✅ **No `createElement('style')` patterns** remain in codebase
-- ✅ **BEM naming conventions** consistently applied
-- ✅ **CSS custom properties** used throughout (design tokens)
-- ✅ **Proper import order** in index.css following ITCSS methodology
-- ✅ **Complete button system** with all variants (primary, accent, secondary, ghost, danger, critical)
-- ✅ **All component classes defined** (reveal-btn, toggle-btn, filter-btn, etc.)
-- ✅ **Progress bar styles consolidated** in progress.css with modifiers for thin/centered variants
+| Role       | Light Theme          | Dark Theme           | Description                  |
+| ---------- | -------------------- | -------------------- | ---------------------------- |
+| Primary    | `hsl(142, 65%, 45%)` | `hsl(142, 70%, 55%)` | Spring green                 |
+| Secondary  | `hsl(200, 75%, 55%)` | `hsl(200, 70%, 65%)` | Sky blue                     |
+| Accent     | `hsl(45, 92%, 52%)`  | `hsl(45, 92%, 52%)`  | Sunshine yellow              |
+| Background | `hsl(90, 30%, 97%)`  | `hsl(120, 15%, 10%)` | Pale mint / Dark green-black |
+| Text       | `hsl(120, 15%, 12%)` | `hsl(120, 10%, 95%)` | Dark green-black / Off-white |
+
+**Bunny-Specific Colors:**
+
+- `--color-bunny-white: hsl(120, 10%, 98%)` - White fur
+- `--color-bunny-pink: hsl(345, 75%, 75%)` - Nose/ears
+- `--color-carrot: hsl(28, 85%, 52%)` - Carrot orange
+- `--color-clover: hsl(142, 60%, 40%)` - Clover green
+
+**Bunny Mascot Assets:**
+
+**Location:** `public/assets/bunny/`
+
+**Mascot Poses (15 SVG files):**
+
+1. `bunny-default.svg` - Happy standing pose (header logo)
+2. `bunny-reading.svg` - Sitting with book (home page hero)
+3. `bunny-celebrating.svg` - Jumping with confetti (success toasts)
+4. `bunny-thinking.svg` - Hand on chin (loading states, info toasts)
+5. `bunny-confused.svg` - Question mark (warning toasts, empty states)
+6. `bunny-surprised.svg` - Wide eyes (error toasts)
+7. `bunny-listening.svg` - Headphones (audio features)
+8. `bunny-happy.svg` - Thumbs up (positive feedback)
+9. `bunny-sleeping.svg` - Zzz symbols (queue empty state)
+10. `bunny-writing.svg` - Calligraphy brush (story generation)
+11. `bunny-proud.svg` - Hands on hips (achievements)
+12. `bunny-excited.svg` - Bouncing with stars (rewards)
+13. `bunny-graduated.svg` - Graduation cap (milestones)
+14. `bunny-carrot.svg` - Holding carrot (gamification)
+15. `bunny-sakura.svg` - Under cherry blossom (seasonal)
+
+**Pattern Elements (7 SVG files):**
+
+- `bunny-silhouette.svg` - Background pattern
+- `bunny-paw-print.svg` - Decorative dividers
+- `bunny-face.svg` - Small icon/avatar
+- `carrot-pattern.svg` - Achievement accents
+- `clover-pattern.svg` - Lucky motifs
+- `bunny-tail.svg` - Decorative dots
+- `bunny-jump.svg` - Button CTAs
+
+**Bunny Integration Points:**
+
+| Component            | Bunny Asset             | Context     | Animation               |
+| -------------------- | ----------------------- | ----------- | ----------------------- |
+| Header               | `bunny-default.svg`     | Logo        | Scale + rotate on hover |
+| Home Hero            | `bunny-reading.svg`     | Mascot      | Floating (3s loop)      |
+| Home Hero Background | `bunny-silhouette.svg`  | Pattern     | Tiled repeat            |
+| Toast (Success)      | `bunny-celebrating.svg` | Icon        | Bounce on appear        |
+| Toast (Error)        | `bunny-surprised.svg`   | Icon        | Bounce on appear        |
+| Toast (Warning)      | `bunny-confused.svg`    | Icon        | Bounce on appear        |
+| Toast (Info)         | `bunny-thinking.svg`    | Icon        | Bounce on appear        |
+| Generator Modal      | `bunny-thinking.svg`    | Loading     | Bob + rotate (2s loop)  |
+| Queue (Empty)        | `bunny-sleeping.svg`    | Empty state | Float (3s loop)         |
+
+**Key Changes (January 2026 - Bunny Theme):**
+
+- ✅ **Complete color transformation** from sakura to bunny palette
+- ✅ **15 mascot poses** created for all user journey contexts
+- ✅ **7 pattern elements** for decorations and backgrounds
+- ✅ **Bunny logo** in header with hover animation
+- ✅ **Contextual bunny mascots** in toasts (success/error/warning/info)
+- ✅ **Loading states** enhanced with bunny-thinking in generator modal
+- ✅ **Empty states** feature bunny-sleeping in queue page
+- ✅ **Home page hero** displays bunny-reading mascot with pattern background
+- ✅ **Accessibility maintained** - All SVGs have `<title>` and `<desc>` tags
+- ✅ **Dark theme support** - Full bunny color palette for dark mode
+- ✅ **Performance optimized** - All SVGs under 8KB, lazy loading ready
+- ✅ **Animations respect** `prefers-reduced-motion` media query
 
 **Import Order (index.css):**
 
@@ -823,6 +890,7 @@ src/styles/
 /* Utilities */
 @import './utilities/layout.css';
 @import './utilities/helpers.css';
+@import './utilities/bunny-patterns.css';
 
 /* Components (alphabetical) */
 @import './components/audioplayer.css';
@@ -1196,7 +1264,7 @@ For Images:
 | **supabase/migrations/20240104_create_jobs_table.sql**         | Jobs table schema                     | -                                   | Database setup                  |
 | **supabase/migrations/20260104_add_on_insert_job_trigger.sql** | On-insert trigger setup               | pg_net extension                    | Real-time job processing        |
 
-_Last Updated: January 11, 2026_
+_Last Updated: January 12, 2026_
 
 For development guidelines, contributing patterns, and troubleshooting, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

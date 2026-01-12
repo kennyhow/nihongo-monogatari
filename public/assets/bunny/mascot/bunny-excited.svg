@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>Usagi-san Excited</title>
+  <desc>A cute white bunny mascot in a bouncing pose with stars in eyes, full of excitement</desc>
+
+  <!-- Sparkles Around -->
+  <path d="M 25 55 L 27 60 L 32 60 L 28 64 L 30 70 L 25 66 L 20 70 L 22 64 L 18 60 L 23 60 Z" fill="#f1c40f"/>
+  <path d="M 175 50 L 177 55 L 182 55 L 178 59 L 180 65 L 175 61 L 170 65 L 172 59 L 168 55 L 173 55 Z" fill="#f1c40f"/>
+  <path d="M 30 145 L 32 150 L 37 150 L 33 154 L 35 160 L 30 156 L 25 160 L 27 154 L 23 150 L 28 150 Z" fill="#f39c12"/>
+  <path d="M 170 140 L 172 145 L 177 145 L 173 149 L 175 155 L 170 151 L 165 155 L 167 149 L 163 145 L 168 145 Z" fill="#f39c12"/>
+  <circle cx="50" cy="35" r="3" fill="#e74c3c"/>
+  <circle cx="150" cy="40" r="3" fill="#3498db"/>
+  <circle cx="40" cy="165" r="2.5" fill="#26a668"/>
+  <circle cx="160" cy="170" r="2.5" fill="#9b59b6"/>
+
+  <!-- Left Ear - Perked Up -->
+  <ellipse cx="62" cy="32" rx="18" ry="42" fill="#ffffff" transform="rotate(-15 62 32)"/>
+  <ellipse cx="62" cy="35" rx="10" ry="32" fill="#f4a8b8" transform="rotate(-15 62 35)"/>
+
+  <!-- Right Ear - Perked Up -->
+  <ellipse cx="138" cy="32" rx="18" ry="42" fill="#ffffff" transform="rotate(15 138 32)"/>
+  <ellipse cx="138" cy="35" rx="10" ry="32" fill="#f4a8b8" transform="rotate(15 138 35)"/>
+
+  <!-- Body - Bouncing Pose -->
+  <ellipse cx="100" cy="140" rx="50" ry="45" fill="#ffffff"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="75" r="45" fill="#ffffff"/>
+
+  <!-- Red Hachimaki (Japanese Headband) - Energetic -->
+  <rect x="50" y="55" width="100" height="18" rx="4" fill="#e74c3c"/>
+  <rect x="83" y="52" width="34" height="24" rx="3" fill="#c0392b"/>
+
+  <!-- Hachimaki Tails - Flowing with Energy -->
+  <path d="M 50 64 Q 32 58 25 45 Q 22 38 28 42 Q 38 52 50 62" fill="#e74c3c"/>
+  <path d="M 150 64 Q 168 58 175 45 Q 178 38 172 42 Q 162 52 150 62" fill="#e74c3c"/>
+
+  <!-- Eyes - Excited with Stars -->
+  <ellipse cx="82" cy="70" rx="9" ry="11" fill="#2d3436"/>
+  <ellipse cx="118" cy="70" rx="9" ry="11" fill="#2d3436"/>
+  <!-- Eye Highlights -->
+  <circle cx="85" cy="67" r="3.5" fill="#ffffff"/>
+  <circle cx="121" cy="67" r="3.5" fill="#ffffff"/>
+  <!-- Stars in Eyes -->
+  <path d="M 88 74 L 90 77 L 93 77 L 91 79 L 92 82 L 88 80 L 84 82 L 85 79 L 83 77 L 86 77 Z" fill="#ffffff"/>
+  <path d="M 124 74 L 126 77 L 129 77 L 127 79 L 128 82 L 124 80 L 120 82 L 121 79 L 119 77 L 122 77 Z" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="82" rx="6" ry="4" fill="#f4a8b8"/>
+
+  <!-- Mouth - Big Excited Grin -->
+  <path d="M 100 86 Q 88 98 75 94" stroke="#2d3436" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M 100 86 Q 112 98 125 94" stroke="#2d3436" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Whiskers - Excited -->
+  <line x1="52" y1="75" x2="72" y2="78" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="52" y1="82" x2="72" y2="83" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="128" y1="78" x2="148" y2="75" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="128" y1="83" x2="148" y2="82" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Arms - Bouncing Up -->
+  <ellipse cx="60" cy="105" rx="12" ry="20" fill="#ffffff" transform="rotate(-40 60 105)"/>
+  <ellipse cx="140" cy="105" rx="12" ry="20" fill="#ffffff" transform="rotate(40 140 105)"/>
+
+  <!-- Paws - Raised High -->
+  <ellipse cx="45" cy="90" rx="10" ry="14" fill="#ffffff" transform="rotate(-35 45 90)"/>
+  <ellipse cx="155" cy="90" rx="10" ry="14" fill="#ffffff" transform="rotate(35 155 90)"/>
+
+  <!-- Legs - Bouncing -->
+  <ellipse cx="78" cy="175" rx="12" ry="18" fill="#ffffff" transform="rotate(-20 78 175)"/>
+  <ellipse cx="122" cy="175" rx="12" ry="18" fill="#ffffff" transform="rotate(20 122 175)"/>
+
+  <!-- Small Cotton Tail -->
+  <circle cx="100" cy="178" r="8" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>Usagi-san Thinking</title>
+  <desc>A cute white bunny mascot with hand on chin and thought bubble, contemplating</desc>
+
+  <!-- Thought Bubble -->
+  <ellipse cx="155" cy="45" rx="30" ry="25" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2"/>
+  <circle cx="135" cy="70" r="6" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1.5"/>
+  <circle cx="125" cy="82" r="4" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1.5"/>
+  <circle cx="118" cy="92" r="2.5" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1"/>
+  <!-- Question Mark in Thought Bubble -->
+  <text x="155" y="55" font-family="Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#7f8c8d">?</text>
+
+  <!-- Left Ear -->
+  <ellipse cx="65" cy="45" rx="18" ry="40" fill="#ffffff" transform="rotate(-12 65 45)"/>
+  <ellipse cx="65" cy="48" rx="10" ry="30" fill="#f4a8b8" transform="rotate(-12 65 48)"/>
+
+  <!-- Right Ear -->
+  <ellipse cx="135" cy="45" rx="18" ry="40" fill="#ffffff" transform="rotate(12 135 45)"/>
+  <ellipse cx="135" cy="48" rx="10" ry="30" fill="#f4a8b8" transform="rotate(12 135 48)"/>
+
+  <!-- Body -->
+  <ellipse cx="100" cy="150" rx="50" ry="45" fill="#ffffff"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="95" r="45" fill="#ffffff"/>
+
+  <!-- Red Hachimaki (Japanese Headband) -->
+  <rect x="52" y="75" width="96" height="18" rx="4" fill="#e74c3c"/>
+  <rect x="85" y="72" width="30" height="24" rx="3" fill="#c0392b"/>
+
+  <!-- Hachimaki Tails -->
+  <path d="M 52 84 Q 35 80 30 95 Q 28 100 32 98 Q 40 92 52 90" fill="#e74c3c"/>
+  <path d="M 148 84 Q 165 80 170 95 Q 172 100 168 98 Q 160 92 148 90" fill="#e74c3c"/>
+
+  <!-- Eyes - Thoughtful/Looking Up -->
+  <ellipse cx="85" cy="90" rx="7" ry="9" fill="#2d3436"/>
+  <ellipse cx="115" cy="90" rx="7" ry="9" fill="#2d3436"/>
+  <!-- Eye Highlights -->
+  <circle cx="87" cy="88" r="2.5" fill="#ffffff"/>
+  <circle cx="117" cy="88" r="2.5" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="102" rx="5" ry="3.5" fill="#f4a8b8"/>
+
+  <!-- Mouth - Small Pensive Mouth -->
+  <path d="M 100 105 Q 95 108 90 106" stroke="#2d3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M 100 105 Q 105 108 110 106" stroke="#2d3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Whiskers -->
+  <line x1="55" y1="95" x2="73" y2="97" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="55" y1="101" x2="73" y2="102" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="127" y1="97" x2="145" y2="95" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="127" y1="102" x2="145" y2="101" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Left Arm -->
+  <ellipse cx="65" cy="145" rx="12" ry="20" fill="#ffffff" transform="rotate(-20 65 145)"/>
+
+  <!-- Right Arm - Hand on Chin (Thinking Pose) -->
+  <ellipse cx="130" cy="140" rx="12" ry="18" fill="#ffffff" transform="rotate(40 130 140)"/>
+  <!-- Paw near Chin -->
+  <ellipse cx="118" cy="110" rx="9" ry="11" fill="#ffffff" transform="rotate(15 118 110)"/>
+
+  <!-- Small Cotton Tail -->
+  <circle cx="100" cy="185" r="8" fill="#ffffff"/>
+</svg>

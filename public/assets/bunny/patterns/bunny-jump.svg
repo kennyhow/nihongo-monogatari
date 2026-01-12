@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <title>Bunny Jump Silhouette</title>
+  <desc>A silhouette of a bunny jumping for button accents and CTAs</desc>
+
+  <!-- Bunny Body (Jumping Pose) -->
+  <ellipse cx="50" cy="55" rx="22" ry="18" fill="#26a668"/>
+
+  <!-- Bunny Head -->
+  <circle cx="50" cy="35" r="18" fill="#26a668"/>
+
+  <!-- Ears (Perked Up) -->
+  <ellipse cx="40" cy="15" rx="7" ry="16" fill="#26a668" transform="rotate(-15 40 15)"/>
+  <ellipse cx="60" cy="15" rx="7" ry="16" fill="#26a668" transform="rotate(15 60 15)"/>
+
+  <!-- Back Legs (Pushing Off) -->
+  <ellipse cx="35" cy="70" rx="8" ry="12" fill="#26a668" transform="rotate(-25 35 70)"/>
+  <ellipse cx="65" cy="70" rx="8" ry="12" fill="#26a668" transform="rotate(25 65 70)"/>
+
+  <!-- Front Paws (Reaching Forward) -->
+  <ellipse cx="35" cy="45" rx="5" ry="8" fill="#26a668" transform="rotate(-40 35 45)"/>
+  <ellipse cx="65" cy="45" rx="5" ry="8" fill="#26a668" transform="rotate(40 65 45)"/>
+
+  <!-- Small Tail -->
+  <circle cx="50" cy="72" r="5" fill="#26a668"/>
+
+  <!-- Motion Lines -->
+  <path d="M 20 40 L 25 40" stroke="#26a668" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 15 45 L 23 45" stroke="#26a668" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 80 40 L 75 40" stroke="#26a668" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 85 45 L 77 45" stroke="#26a668" stroke-width="2" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>Usagi-san - Happy Bunny Mascot</title>
+  <desc>A cute white bunny mascot with a red hachimaki headband, standing happily</desc>
+
+  <!-- Left Ear -->
+  <ellipse cx="65" cy="45" rx="18" ry="40" fill="#ffffff" transform="rotate(-12 65 45)"/>
+  <ellipse cx="65" cy="48" rx="10" ry="30" fill="#f4a8b8" transform="rotate(-12 65 48)"/>
+
+  <!-- Right Ear -->
+  <ellipse cx="135" cy="45" rx="18" ry="40" fill="#ffffff" transform="rotate(12 135 45)"/>
+  <ellipse cx="135" cy="48" rx="10" ry="30" fill="#f4a8b8" transform="rotate(12 135 48)"/>
+
+  <!-- Body -->
+  <ellipse cx="100" cy="150" rx="50" ry="45" fill="#ffffff"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="95" r="45" fill="#ffffff"/>
+
+  <!-- Red Hachimaki (Japanese Headband) -->
+  <rect x="52" y="75" width="96" height="18" rx="4" fill="#e74c3c"/>
+  <rect x="85" y="72" width="30" height="24" rx="3" fill="#c0392b"/>
+
+  <!-- Hachimaki Tails -->
+  <path d="M 52 84 Q 35 80 30 95 Q 28 100 32 98 Q 40 92 52 90" fill="#e74c3c"/>
+  <path d="M 148 84 Q 165 80 170 95 Q 172 100 168 98 Q 160 92 148 90" fill="#e74c3c"/>
+
+  <!-- Eyes -->
+  <ellipse cx="85" cy="90" rx="8" ry="10" fill="#2d3436"/>
+  <ellipse cx="115" cy="90" rx="8" ry="10" fill="#2d3436"/>
+  <!-- Eye Highlights -->
+  <circle cx="88" cy="87" r="3" fill="#ffffff"/>
+  <circle cx="118" cy="87" r="3" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="102" rx="6" ry="4" fill="#f4a8b8"/>
+
+  <!-- Mouth - Happy Smile -->
+  <path d="M 100 106 Q 92 114 82 110" stroke="#2d3436" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M 100 106 Q 108 114 118 110" stroke="#2d3436" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Whiskers -->
+  <line x1="55" y1="95" x2="75" y2="98" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="55" y1="102" x2="75" y2="103" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="98" x2="145" y2="95" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="103" x2="145" y2="102" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Arms -->
+  <ellipse cx="65" cy="145" rx="12" ry="20" fill="#ffffff" transform="rotate(-20 65 145)"/>
+  <ellipse cx="135" cy="145" rx="12" ry="20" fill="#ffffff" transform="rotate(20 135 145)"/>
+
+  <!-- Small Cotton Tail -->
+  <circle cx="100" cy="185" r="8" fill="#ffffff"/>
+</svg>

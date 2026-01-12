@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <title>Carrot Pattern</title>
+  <desc>An orange carrot with green tops for decorative patterns</desc>
+
+  <!-- Carrot Body -->
+  <path d="M 50 15 Q 65 20 65 50 Q 65 80 50 85 Q 35 80 35 50 Q 35 20 50 15 Z" fill="#e67e22"/>
+  <path d="M 50 20 Q 60 24 60 50 Q 60 76 50 80 Q 40 76 40 50 Q 40 24 50 20 Z" fill="#f39c12"/>
+
+  <!-- Carrot Lines -->
+  <path d="M 50 25 L 50 75" stroke="#d35400" stroke-width="1.5" fill="none"/>
+  <path d="M 45 30 L 55 35" stroke="#d35400" stroke-width="1" fill="none"/>
+  <path d="M 45 40 L 55 45" stroke="#d35400" stroke-width="1" fill="none"/>
+  <path d="M 45 50 L 55 55" stroke="#d35400" stroke-width="1" fill="none"/>
+  <path d="M 45 60 L 55 65" stroke="#d35400" stroke-width="1" fill="none"/>
+
+  <!-- Green Tops -->
+  <path d="M 50 15 Q 40 5 35 10" stroke="#27ae60" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 50 15 Q 50 3 48 8" stroke="#27ae60" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 50 15 Q 60 5 65 10" stroke="#27ae60" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Leaves -->
+  <ellipse cx="35" cy="10" rx="5" ry="8" fill="#2ecc71" transform="rotate(-20 35 10)"/>
+  <ellipse cx="48" cy="8" rx="4" ry="7" fill="#2ecc71" transform="rotate(0 48 8)"/>
+  <ellipse cx="65" cy="10" rx="5" ry="8" fill="#2ecc71" transform="rotate(20 65 10)"/>
+</svg>

@@ -37,6 +37,24 @@
   gap: var(--space-1);
 }
 
+/* Bunny Logo Variant */
+.logo--bunny {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.logo__bunny-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  transition: transform var(--duration-normal) var(--ease-spring);
+}
+
+.logo:hover .logo__bunny-icon {
+  transform: scale(1.1) rotate(-5deg);
+}
+
 .logo-jp {
   font-family: var(--font-display);
   font-size: var(--text-xl);

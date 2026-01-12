@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>Usagi-san Reading</title>
+  <desc>A cute white bunny mascot sitting and reading a book with studious expression</desc>
+
+  <!-- Left Ear -->
+  <ellipse cx="65" cy="45" rx="18" ry="40" fill="#ffffff" transform="rotate(-12 65 45)"/>
+  <ellipse cx="65" cy="48" rx="10" ry="30" fill="#f4a8b8" transform="rotate(-12 65 48)"/>
+
+  <!-- Right Ear -->
+  <ellipse cx="135" cy="45" rx="18" ry="40" fill="#ffffff" transform="rotate(12 135 45)"/>
+  <ellipse cx="135" cy="48" rx="10" ry="30" fill="#f4a8b8" transform="rotate(12 135 48)"/>
+
+  <!-- Body (Sitting) -->
+  <ellipse cx="100" cy="155" rx="45" ry="40" fill="#ffffff"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="90" r="42" fill="#ffffff"/>
+
+  <!-- Red Hachimaki (Japanese Headband) -->
+  <rect x="55" y="70" width="90" height="17" rx="4" fill="#e74c3c"/>
+  <rect x="87" y="67" width="26" height="23" rx="3" fill="#c0392b"/>
+
+  <!-- Hachimaki Tails -->
+  <path d="M 55 78 Q 38 74 33 89 Q 31 94 35 92 Q 43 86 55 84" fill="#e74c3c"/>
+  <path d="M 145 78 Q 162 74 167 89 Q 169 94 165 92 Q 157 86 145 84" fill="#e74c3c"/>
+
+  <!-- Eyes - Focused/Reading -->
+  <circle cx="85" cy="85" r="7" fill="#2d3436"/>
+  <circle cx="115" cy="85" r="7" fill="#2d3436"/>
+  <!-- Eye Highlights -->
+  <circle cx="87" cy="83" r="2.5" fill="#ffffff"/>
+  <circle cx="117" cy="83" r="2.5" fill="#ffffff"/>
+
+  <!-- Reading Glasses (Cute Round Glasses) -->
+  <circle cx="85" cy="85" r="14" fill="none" stroke="#2c3e50" stroke-width="2.5"/>
+  <circle cx="115" cy="85" r="14" fill="none" stroke="#2c3e50" stroke-width="2.5"/>
+  <path d="M 99 85 L 101 85" stroke="#2c3e50" stroke-width="2.5"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="96" rx="5" ry="3.5" fill="#f4a8b8"/>
+
+  <!-- Mouth - Small Studious Smile -->
+  <path d="M 100 99 Q 95 103 88 101" stroke="#2d3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M 100 99 Q 105 103 112 101" stroke="#2d3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Whiskers -->
+  <line x1="58" y1="90" x2="73" y2="92" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="58" y1="96" x2="73" y2="97" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="127" y1="92" x2="142" y2="90" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="127" y1="97" x2="142" y2="96" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Book -->
+  <rect x="55" y="120" width="90" height="55" rx="3" fill="#3498db"/>
+  <rect x="57" y="122" width="86" height="51" rx="2" fill="#ecf0f1"/>
+  <!-- Book Spine -->
+  <rect x="98" y="120" width="4" height="55" rx="1" fill="#2980b9"/>
+  <!-- Book Lines (Text) -->
+  <line x1="63" y1="132" x2="93" y2="132" stroke="#95a5a6" stroke-width="2" stroke-linecap="round"/>
+  <line x1="63" y1="140" x2="93" y2="140" stroke="#95a5a6" stroke-width="2" stroke-linecap="round"/>
+  <line x1="63" y1="148" x2="85" y2="148" stroke="#95a5a6" stroke-width="2" stroke-linecap="round"/>
+  <line x1="107" y1="132" x2="137" y2="132" stroke="#95a5a6" stroke-width="2" stroke-linecap="round"/>
+  <line x1="107" y1="140" x2="137" y2="140" stroke="#95a5a6" stroke-width="2" stroke-linecap="round"/>
+  <line x1="107" y1="148" x2="130" y2="148" stroke="#95a5a6" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Arms Holding Book -->
+  <ellipse cx="50" cy="145" rx="10" ry="18" fill="#ffffff" transform="rotate(15 50 145)"/>
+  <ellipse cx="150" cy="145" rx="10" ry="18" fill="#ffffff" transform="rotate(-15 150 145)"/>
+
+  <!-- Paws on Book -->
+  <ellipse cx="58" cy="150" rx="8" ry="10" fill="#ffffff"/>
+  <ellipse cx="142" cy="150" rx="8" ry="10" fill="#ffffff"/>
+
+  <!-- Small Cotton Tail -->
+  <circle cx="100" cy="190" r="7" fill="#ffffff"/>
+</svg>

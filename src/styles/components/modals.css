@@ -207,9 +207,10 @@
 /* Loading State */
 .generator-loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-4);
+  padding: var(--space-6);
   background: var(--color-primary-light);
   border-radius: var(--radius-lg);
   margin-top: var(--space-4);
@@ -217,6 +218,28 @@
 
 .generator-loading.hidden {
   display: none;
+}
+
+.generator-loading__bunny {
+  width: 96px;
+  height: 96px;
+  animation: bunnyThink 2s ease-in-out infinite;
+}
+
+@keyframes bunnyThink {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-5px) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(0) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-3px) rotate(2deg);
+  }
 }
 
 .generator-loading__spinner {
@@ -230,6 +253,10 @@
 
 .generator-loading__spinner--success {
   border-top-color: var(--color-success);
+}
+
+.generator-loading__text {
+  text-align: center;
 }
 
 .generator-loading__text p {

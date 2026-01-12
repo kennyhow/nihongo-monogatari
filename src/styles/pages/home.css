@@ -59,6 +59,39 @@
   color: var(--color-text-muted);
 }
 
+/* Bunny Mascot in Hero */
+.hero__mascot {
+  width: 200px;
+  height: 200px;
+  margin: var(--space-8) auto;
+  animation: bunnyFloat 3s ease-in-out infinite;
+}
+
+@keyframes bunnyFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Bunny Pattern Background */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/assets/bunny/patterns/bunny-silhouette.svg');
+  background-repeat: repeat;
+  background-size: 150px;
+  opacity: var(--pattern-opacity-primary);
+  z-index: 0;
+}
+
 .hero__description {
   font-size: var(--text-lg);
   color: var(--color-text-secondary);

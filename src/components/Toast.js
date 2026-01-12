@@ -44,18 +44,26 @@ export const showToast = ({
   const container = getContainer();
   const id = `toast-${++toastIdCounter}`;
 
-  const icons = {
-    success: '✓',
-    error: '✕',
-    warning: '⚠',
-    info: 'ℹ',
+  // Bunny mascots for each toast type
+  const bunnyMascots = {
+    success: '/assets/bunny/mascot/bunny-celebrating.svg',
+    error: '/assets/bunny/mascot/bunny-surprised.svg',
+    warning: '/assets/bunny/mascot/bunny-confused.svg',
+    info: '/assets/bunny/mascot/bunny-thinking.svg',
+  };
+
+  const bunnyAlt = {
+    success: 'Celebrating bunny - Success!',
+    error: 'Surprised bunny - Oops!',
+    warning: 'Confused bunny - Warning',
+    info: 'Thinking bunny - Info',
   };
 
   const toast = document.createElement('div');
   toast.className = `toast toast--${type}`;
   toast.id = id;
   toast.innerHTML = `
-    <span class="toast__icon">${icons[type] || icons.info}</span>
+    <img src="${bunnyMascots[type] || bunnyMascots.info}" alt="${bunnyAlt[type] || bunnyAlt.info}" class="toast__bunny">
     <span class="toast__message">${message}</span>
     ${action ? `<button class="btn btn--sm btn--ghost toast__action">${actionLabel}</button>` : ''}
     <button class="icon-btn toast__close" aria-label="Dismiss">✕</button>

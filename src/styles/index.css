@@ -11,6 +11,7 @@
 /* Utilities */
 @import url('./utilities/layout.css');
 @import url('./utilities/helpers.css');
+@import url('./utilities/bunny-patterns.css');
 
 /* Components */
 @import url('./components/headers.css');

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <title>Bunny Face Icon Pattern</title>
+  <desc>Simple bunny face icon with ears and face for avatars and small icons</desc>
+
+  <g>
+    <!-- Left ear -->
+    <ellipse cx="30" cy="25" rx="10" ry="25" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+    <ellipse cx="30" cy="25" rx="5" ry="18" fill="#f4a8b8"/>
+
+    <!-- Right ear -->
+    <ellipse cx="70" cy="25" rx="10" ry="25" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+    <ellipse cx="70" cy="25" rx="5" ry="18" fill="#f4a8b8"/>
+
+    <!-- Face -->
+    <circle cx="50" cy="65" r="30" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+
+    <!-- Left eye -->
+    <ellipse cx="40" cy="62" rx="5" ry="7" fill="#2d3436"/>
+    <circle cx="41" cy="59" r="2" fill="#ffffff"/>
+
+    <!-- Right eye -->
+    <ellipse cx="60" cy="62" rx="5" ry="7" fill="#2d3436"/>
+    <circle cx="61" cy="59" r="2" fill="#ffffff"/>
+
+    <!-- Nose -->
+    <ellipse cx="50" cy="72" rx="3" ry="2.5" fill="#f4a8b8"/>
+
+    <!-- Mouth -->
+    <path d="M44 78 Q50 83 56 78" fill="none" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+
+    <!-- Whiskers -->
+    <line x1="25" y1="70" x2="38" y2="72" stroke="#2d3436" stroke-width="1"/>
+    <line x1="25" y1="75" x2="38" y2="75" stroke="#2d3436" stroke-width="1"/>
+    <line x1="62" y1="72" x2="75" y2="70" stroke="#2d3436" stroke-width="1"/>
+    <line x1="62" y1="75" x2="75" y2="75" stroke="#2d3436" stroke-width="1"/>
+
+    <!-- Cheeks -->
+    <ellipse cx="33" cy="72" rx="5" ry="3" fill="#f4a8b8" opacity="0.5"/>
+    <ellipse cx="67" cy="72" rx="5" ry="3" fill="#f4a8b8" opacity="0.5"/>
+  </g>
+</svg>

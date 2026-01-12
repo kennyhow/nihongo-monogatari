@@ -183,10 +183,10 @@ const Queue = parentElement => {
     if (jobs.length === 0) {
       root.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state__icon">📭</div>
-          <h2 class="empty-state__title">No jobs</h2>
+          <img src="/assets/bunny/mascot/bunny-sleeping.svg" alt="Usagi-san sleeping" class="empty-state__bunny">
+          <h2 class="empty-state__title">No jobs${currentFilter === 'all' ? '' : ` (${currentFilter})`}</h2>
           <p class="empty-state__description">
-            ${currentFilter === 'all' ? 'No jobs yet. Create a story to get started!' : `No ${currentFilter} jobs.`}
+            ${currentFilter === 'all' ? 'Usagi-san is napping! No jobs running. Create a story to wake him up!' : `No ${currentFilter} jobs.`}
           </p>
         </div>
       `;

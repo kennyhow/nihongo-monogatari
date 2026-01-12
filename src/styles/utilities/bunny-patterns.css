@@ -1,0 +1,86 @@
+/* ============================================
+   BUNNY PATTERN UTILITIES
+   ============================================ */
+
+/* Bunny Silhouette Background Pattern */
+.bunny-pattern-bg {
+  background-image: url('/assets/bunny/patterns/bunny-silhouette.svg');
+  background-repeat: repeat;
+  background-size: 120px;
+  background-position: center;
+  opacity: var(--pattern-opacity-primary);
+}
+
+/* Paw Print Pattern */
+.paw-pattern-bg {
+  background-image: url('/assets/bunny/patterns/bunny-paw-print.svg');
+  background-repeat: repeat;
+  background-size: 80px;
+  opacity: var(--pattern-opacity-secondary);
+}
+
+/* Bunny Gradient Backgrounds */
+.bunny-gradient {
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light));
+}
+
+.bunny-gradient-vibrant {
+  background: linear-gradient(135deg, hsl(142, 65%, 85%), hsl(200, 75%, 90%));
+}
+
+/* Decorative Bunny Corners */
+.bunny-corners {
+  position: relative;
+}
+
+.bunny-corners::before,
+.bunny-corners::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background-image: url('/assets/bunny/patterns/bunny-face.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.bunny-corners::before {
+  top: 8px;
+  left: 8px;
+}
+
+.bunny-corners::after {
+  bottom: 8px;
+  right: 8px;
+  transform: rotate(180deg);
+}
+
+/* Bunny-themed decorative dots (cotton tails) */
+.bunny-dots {
+  background-image: radial-gradient(var(--color-bunny-white) 20%, transparent 20%);
+  background-size: 20px 20px;
+  background-position:
+    0 0,
+    10px 10px;
+  opacity: 0.5;
+}
+
+/* Carrot accent border */
+.carrot-accent {
+  border-left: 4px solid var(--color-carrot);
+}
+
+/* Clover accent border */
+.clover-accent {
+  border-left: 4px solid var(--color-clover);
+}
+
+/* Bunny-themed text gradient */
+.bunny-text-gradient {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

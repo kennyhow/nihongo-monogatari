@@ -13,6 +13,23 @@
   opacity: 0.5;
 }
 
+.empty-state__bunny {
+  width: 192px;
+  height: 192px;
+  margin: 0 auto var(--space-6);
+  animation: bunnySleep 3s ease-in-out infinite;
+}
+
+@keyframes bunnySleep {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
 .empty-state__title {
   font-size: var(--text-lg);
   font-weight: 600;

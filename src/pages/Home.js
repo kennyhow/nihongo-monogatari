@@ -36,7 +36,7 @@ const Home = parentElement => {
             <span class="hero__title-en">Learn Japanese Through Stories</span>
           </h1>
           <p class="hero__description">
-            Immerse yourself in AI-generated Japanese stories with side-by-side translations, 
+            Immerse yourself in AI-generated Japanese stories with side-by-side translations,
             furigana readings, and high-quality audio. Learn naturally through context and culture.
           </p>
           <div class="hero__actions">
@@ -47,6 +47,9 @@ const Home = parentElement => {
               🔤 Kana Chart
             </a>
           </div>
+
+          <!-- Bunny Mascot -->
+          <img src="/assets/bunny/mascot/bunny-reading.svg" alt="Usagi-san reading bunny mascot" class="hero__mascot">
         </div>
         
         <div class="hero__decoration">

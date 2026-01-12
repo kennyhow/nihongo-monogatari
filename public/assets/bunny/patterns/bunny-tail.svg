@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <title>Bunny Cotton Tail</title>
+  <desc>A fluffy cotton ball tail for decorative dots</desc>
+
+  <!-- Outer Fluffy Layers -->
+  <circle cx="50" cy="50" r="35" fill="#ffffff" opacity="0.3"/>
+  <circle cx="50" cy="50" r="28" fill="#ffffff" opacity="0.5"/>
+  <circle cx="50" cy="50" r="22" fill="#ffffff" opacity="0.7"/>
+
+  <!-- Main Cotton Tail -->
+  <circle cx="50" cy="50" r="16" fill="#ffffff"/>
+
+  <!-- Inner Highlights -->
+  <circle cx="44" cy="44" r="5" fill="#ffffff" opacity="0.9"/>
+  <circle cx="56" cy="54" r="4" fill="#ffffff" opacity="0.8"/>
+  <circle cx="54" cy="46" r="3" fill="#ffffff" opacity="0.85"/>
+</svg>

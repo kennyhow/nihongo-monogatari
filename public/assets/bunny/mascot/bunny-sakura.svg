@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <title>Bunny Mascot with Cherry Blossoms - Traditional Japanese Theme</title>
+  <desc>A cute white fluffy bunny mascot wearing a red hachimaki, sitting peacefully with cherry blossom petals falling around</desc>
+
+  <!-- Sakura petals falling in background -->
+  <g opacity="0.7">
+    <!-- Petal 1 -->
+    <ellipse cx="25" cy="30" rx="8" ry="10" fill="#ffb6c1" transform="rotate(20 25 30)"/>
+    <path d="M25 30 L22 35" stroke="#ff69b4" stroke-width="1" transform="rotate(20 25 30)"/>
+
+    <!-- Petal 2 -->
+    <ellipse cx="170" cy="45" rx="7" ry="9" fill="#ffc0cb" transform="rotate(-15 170 45)"/>
+    <path d="M170 45 L173 50" stroke="#ff69b4" stroke-width="1" transform="rotate(-15 170 45)"/>
+
+    <!-- Petal 3 -->
+    <ellipse cx="45" cy="175" rx="6" ry="8" fill="#ffb6c1" transform="rotate(35 45 175)"/>
+    <path d="M45 175 L42 180" stroke="#ff69b4" stroke-width="1" transform="rotate(35 45 175)"/>
+
+    <!-- Petal 4 -->
+    <ellipse cx="155" cy="165" rx="7" ry="9" fill="#ffc0cb" transform="rotate(-25 155 165)"/>
+    <path d="M155 165 L158 170" stroke="#ff69b4" stroke-width="1" transform="rotate(-25 155 165)"/>
+
+    <!-- Petal 5 -->
+    <ellipse cx="15" cy="100" rx="5" ry="7" fill="#ffb6c1" transform="rotate(45 15 100)"/>
+    <path d="M15 100 L12 105" stroke="#ff69b4" stroke-width="1" transform="rotate(45 15 100)"/>
+
+    <!-- Petal 6 -->
+    <ellipse cx="185" cy="120" rx="6" ry="8" fill="#ffc0cb" transform="rotate(-30 185 120)"/>
+    <path d="M185 120 L188 125" stroke="#ff69b4" stroke-width="1" transform="rotate(-30 185 120)"/>
+  </g>
+
+  <!-- Ears -->
+  <ellipse cx="70" cy="50" rx="18" ry="42" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+  <ellipse cx="70" cy="50" rx="10" ry="30" fill="#f4a8b8"/>
+  <ellipse cx="130" cy="50" rx="18" ry="42" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+  <ellipse cx="130" cy="50" rx="10" ry="30" fill="#f4a8b8"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="105" r="48" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+
+  <!-- Hachimaki (Japanese headband) -->
+  <rect x="52" y="80" width="96" height="18" fill="#e74c3c" rx="3"/>
+  <circle cx="100" cy="89" r="7" fill="#c0392b"/>
+  <rect x="52" y="89" width="48" height="9" fill="#c0392b" opacity="0.3"/>
+  <rect x="100" y="89" width="48" height="9" fill="#c0392b" opacity="0.3"/>
+  <path d="M52 89 Q57 79 62 89" fill="#e74c3c" stroke="none"/>
+  <path d="M138 89 Q143 79 148 89" fill="#e74c3c" stroke="none"/>
+
+  <!-- Face -->
+  <!-- Eyes -->
+  <ellipse cx="85" cy="100" rx="7" ry="9" fill="#2d3436"/>
+  <circle cx="87" cy="95" r="2.5" fill="#ffffff"/>
+  <ellipse cx="115" cy="100" rx="7" ry="9" fill="#2d3436"/>
+  <circle cx="117" cy="95" r="2.5" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="112" rx="4" ry="3" fill="#f4a8b8"/>
+
+  <!-- Mouth - peaceful happy expression -->
+  <path d="M94 120 Q100 126 106 120" fill="none" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Whiskers -->
+  <line x1="62" y1="110" x2="82" y2="112" stroke="#2d3436" stroke-width="1.5"/>
+  <line x1="62" y1="116" x2="82" y2="116" stroke="#2d3436" stroke-width="1.5"/>
+  <line x1="118" y1="112" x2="138" y2="110" stroke="#2d3436" stroke-width="1.5"/>
+  <line x1="118" y1="116" x2="138" y2="116" stroke="#2d3436" stroke-width="1.5"/>
+
+  <!-- Cheeks -->
+  <ellipse cx="73" cy="115" rx="7" ry="4" fill="#f4a8b8" opacity="0.5"/>
+  <ellipse cx="127" cy="115" rx="7" ry="4" fill="#f4a8b8" opacity="0.5"/>
+
+  <!-- Body sitting -->
+  <ellipse cx="100" cy="160" rx="38" ry="28" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+
+  <!-- Arms resting peacefully -->
+  <ellipse cx="68" cy="150" rx="10" ry="9" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+  <ellipse cx="132" cy="150" rx="10" ry="9" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+
+  <!-- Feet -->
+  <ellipse cx="78" cy="185" rx="16" ry="7" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+  <ellipse cx="122" cy="185" rx="16" ry="7" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+
+  <!-- Small sakura branch near bunny -->
+  <path d="M165 60 Q160 50 150 55" fill="none" stroke="#8b4513" stroke-width="2"/>
+  <!-- Sakura flower on branch -->
+  <g transform="translate(150, 55)">
+    <ellipse cx="0" cy="-3" rx="4" ry="6" fill="#ffb6c1"/>
+    <ellipse cx="-3" cy="1" rx="4" ry="5" fill="#ffc0cb" transform="rotate(-72 -3 1)"/>
+    <ellipse cx="3" cy="1" rx="4" ry="5" fill="#ffb6c1" transform="rotate(72 3 1)"/>
+    <ellipse cx="-2" cy="-1" rx="4" ry="5" fill="#ffc0cb" transform="rotate(-144 -2 -1)"/>
+    <ellipse cx="2" cy="-1" rx="4" ry="5" fill="#ffb6c1" transform="rotate(144 2 -1)"/>
+    <circle cx="0" cy="0" r="1.5" fill="#ff69b4"/>
+  </g>
+</svg>

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>Usagi-san Graduated</title>
+  <desc>A cute white bunny mascot wearing a graduation cap and holding a diploma, celebrating graduation</desc>
+
+  <!-- Left Ear -->
+  <ellipse cx="65" cy="45" rx="18" ry="40" fill="#ffffff" transform="rotate(-12 65 45)"/>
+  <ellipse cx="65" cy="48" rx="10" ry="30" fill="#f4a8b8" transform="rotate(-12 65 48)"/>
+
+  <!-- Right Ear -->
+  <ellipse cx="135" cy="45" rx="18" ry="40" fill="#ffffff" transform="rotate(12 135 45)"/>
+  <ellipse cx="135" cy="48" rx="10" ry="30" fill="#f4a8b8" transform="rotate(12 135 48)"/>
+
+  <!-- Body -->
+  <ellipse cx="100" cy="150" rx="50" ry="45" fill="#ffffff"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="95" r="45" fill="#ffffff"/>
+
+  <!-- Graduation Cap (Mortarboard) -->
+  <!-- Cap Top -->
+  <rect x="58" y="48" width="84" height="8" rx="1" fill="#2d3436" transform="rotate(-5 100 52)"/>
+  <!-- Cap Base -->
+  <path d="M 60 56 L 140 56 L 135 65 L 65 65 Z" fill="#2d3436"/>
+  <!-- Tassel -->
+  <line x1="100" y1="52" x2="100" y2="70" stroke="#f1c40f" stroke-width="2"/>
+  <circle cx="100" cy="72" r="3" fill="#f1c40f"/>
+  <path d="M 100 72 Q 105 78 100 85 Q 95 78 100 72" fill="#f1c40f"/>
+
+  <!-- Red Hachimaki (Japanese Headband) -->
+  <rect x="52" y="75" width="96" height="18" rx="4" fill="#e74c3c"/>
+  <rect x="85" y="72" width="30" height="24" rx="3" fill="#c0392b"/>
+
+  <!-- Hachimaki Tails -->
+  <path d="M 52 84 Q 35 80 30 95 Q 28 100 32 98 Q 40 92 52 90" fill="#e74c3c"/>
+  <path d="M 148 84 Q 165 80 170 95 Q 172 100 168 98 Q 160 92 148 90" fill="#e74c3c"/>
+
+  <!-- Eyes - Happy/Proud -->
+  <ellipse cx="85" cy="90" rx="8" ry="10" fill="#2d3436"/>
+  <ellipse cx="115" cy="90" rx="8" ry="10" fill="#2d3436"/>
+  <!-- Eye Highlights -->
+  <circle cx="88" cy="87" r="3" fill="#ffffff"/>
+  <circle cx="118" cy="87" r="3" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="102" rx="6" ry="4" fill="#f4a8b8"/>
+
+  <!-- Mouth - Proud Smile -->
+  <path d="M 100 106 Q 90 116 78 112" stroke="#2d3436" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M 100 106 Q 110 116 122 112" stroke="#2d3436" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Whiskers -->
+  <line x1="55" y1="95" x2="75" y2="98" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="55" y1="102" x2="75" y2="103" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="98" x2="145" y2="95" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="103" x2="145" y2="102" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Left Arm -->
+  <ellipse cx="65" cy="145" rx="12" ry="20" fill="#ffffff" transform="rotate(-20 65 145)"/>
+
+  <!-- Right Arm - Holding Diploma -->
+  <ellipse cx="135" cy="140" rx="12" ry="20" fill="#ffffff" transform="rotate(30 135 140)"/>
+
+  <!-- Rolled Diploma -->
+  <rect x="135" y="115" width="12" height="45" rx="6" fill="#f5f5f5" stroke="#dcdcdc" stroke-width="1.5"/>
+  <rect x="137" y="118" width="8" height="39" rx="4" fill="#f1c40f"/>
+  <!-- Diploma Ribbon -->
+  <rect x="140" y="125" width="2" height="8" fill="#e74c3c"/>
+  <circle cx="141" cy="133" r="2.5" fill="#e74c3c"/>
+
+  <!-- Paw Holding Diploma -->
+  <ellipse cx="138" cy="135" rx="9" ry="11" fill="#ffffff" transform="rotate(20 138 135)"/>
+
+  <!-- Small Cotton Tail -->
+  <circle cx="100" cy="185" r="8" fill="#ffffff"/>
+
+  <!-- Small Celebration Confetti -->
+  <circle cx="30" cy="40" r="2" fill="#e74c3c"/>
+  <circle cx="170" cy="45" r="2" fill="#f39c12"/>
+  <circle cx="25" cy="165" r="2" fill="#3498db"/>
+  <circle cx="175" cy="160" r="2" fill="#26a668"/>
+</svg>

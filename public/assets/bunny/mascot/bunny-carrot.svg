@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <title>Bunny Mascot with Carrot - Reward Achievement</title>
+  <desc>A cute white fluffy bunny mascot wearing a red Japanese hachimaki headband, proudly holding an orange carrot as a reward symbol</desc>
+
+  <!-- Ears -->
+  <ellipse cx="65" cy="55" rx="20" ry="45" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+  <ellipse cx="65" cy="55" rx="12" ry="32" fill="#f4a8b8"/>
+  <ellipse cx="135" cy="55" rx="20" ry="45" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+  <ellipse cx="135" cy="55" rx="12" ry="32" fill="#f4a8b8"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="110" r="50" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+
+  <!-- Hachimaki (Japanese headband) -->
+  <rect x="50" y="85" width="100" height="20" fill="#e74c3c" rx="3"/>
+  <circle cx="100" cy="95" r="8" fill="#c0392b"/>
+  <rect x="50" y="95" width="50" height="10" fill="#c0392b" opacity="0.3"/>
+  <rect x="100" y="95" width="50" height="10" fill="#c0392b" opacity="0.3"/>
+  <path d="M50 95 Q55 85 60 95" fill="#e74c3c" stroke="none"/>
+  <path d="M140 95 Q145 85 150 95" fill="#e74c3c" stroke="none"/>
+
+  <!-- Face -->
+  <!-- Eyes -->
+  <ellipse cx="85" cy="105" rx="8" ry="10" fill="#2d3436"/>
+  <circle cx="87" cy="100" r="3" fill="#ffffff"/>
+  <ellipse cx="115" cy="105" rx="8" ry="10" fill="#2d3436"/>
+  <circle cx="117" cy="100" r="3" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="118" rx="5" ry="4" fill="#f4a8b8"/>
+
+  <!-- Mouth - happy expression -->
+  <path d="M92 124 Q100 132 108 124" fill="none" stroke="#2d3436" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M94 122 Q100 125 106 122" fill="none" stroke="#2d3436" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Whiskers -->
+  <line x1="60" y1="115" x2="82" y2="118" stroke="#2d3436" stroke-width="1.5"/>
+  <line x1="60" y1="122" x2="82" y2="122" stroke="#2d3436" stroke-width="1.5"/>
+  <line x1="118" y1="118" x2="140" y2="115" stroke="#2d3436" stroke-width="1.5"/>
+  <line x1="118" y1="122" x2="140" y2="122" stroke="#2d3436" stroke-width="1.5"/>
+
+  <!-- Cheeks -->
+  <ellipse cx="72" cy="120" rx="8" ry="5" fill="#f4a8b8" opacity="0.5"/>
+  <ellipse cx="128" cy="120" rx="8" ry="5" fill="#f4a8b8" opacity="0.5"/>
+
+  <!-- Body -->
+  <ellipse cx="100" cy="165" rx="40" ry="30" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+
+  <!-- Arms holding carrot -->
+  <ellipse cx="65" cy="155" rx="12" ry="10" fill="#ffffff" stroke="#2d3436" stroke-width="2" transform="rotate(-30 65 155)"/>
+  <ellipse cx="135" cy="155" rx="12" ry="10" fill="#ffffff" stroke="#2d3436" stroke-width="2" transform="rotate(30 135 155)"/>
+
+  <!-- Carrot -->
+  <path d="M85 140 L90 145 L95 140 L100 150 L105 140 L110 145 L115 140 L100 165 Z" fill="#ff9f43" stroke="#e17055" stroke-width="2"/>
+  <ellipse cx="100" cy="138" rx="6" ry="4" fill="#ff9f43" stroke="#e17055" stroke-width="1.5"/>
+  <!-- Carrot lines -->
+  <line x1="92" y1="148" x2="95" y2="145" stroke="#e17055" stroke-width="1"/>
+  <line x1="100" y1="150" x2="100" y2="145" stroke="#e17055" stroke-width="1"/>
+  <line x1="108" y1="148" x2="105" y2="145" stroke="#e17055" stroke-width="1"/>
+
+  <!-- Carrot greens -->
+  <path d="M95 138 Q90 125 85 130" fill="none" stroke="#27ae60" stroke-width="4" stroke-linecap="round"/>
+  <path d="M100 138 Q100 122 100 128" fill="none" stroke="#2ecc71" stroke-width="4" stroke-linecap="round"/>
+  <path d="M105 138 Q110 125 115 130" fill="none" stroke="#27ae60" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="85" cy="130" rx="5" ry="8" fill="#27ae60"/>
+  <ellipse cx="100" cy="126" rx="5" ry="10" fill="#2ecc71"/>
+  <ellipse cx="115" cy="130" rx="5" ry="8" fill="#27ae60"/>
+
+  <!-- Feet -->
+  <ellipse cx="75" cy="190" rx="18" ry="8" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+  <ellipse cx="125" cy="190" rx="18" ry="8" fill="#ffffff" stroke="#2d3436" stroke-width="2"/>
+</svg>

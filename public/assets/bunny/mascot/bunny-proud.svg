@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>Usagi-san Proud</title>
+  <desc>A cute white bunny mascot with chest puffed out confidently, hands on hips</desc>
+
+  <!-- Left Ear -->
+  <ellipse cx="65" cy="40" rx="18" ry="40" fill="#ffffff" transform="rotate(-8 65 40)"/>
+  <ellipse cx="65" cy="43" rx="10" ry="30" fill="#f4a8b8" transform="rotate(-8 65 43)"/>
+
+  <!-- Right Ear -->
+  <ellipse cx="135" cy="40" rx="18" ry="40" fill="#ffffff" transform="rotate(8 135 40)"/>
+  <ellipse cx="135" cy="43" rx="10" ry="30" fill="#f4a8b8" transform="rotate(8 135 43)"/>
+
+  <!-- Body - Puffed Chest -->
+  <ellipse cx="100" cy="145" rx="52" ry="48" fill="#ffffff"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="90" r="45" fill="#ffffff"/>
+
+  <!-- Red Hachimaki (Japanese Headband) -->
+  <rect x="52" y="70" width="96" height="18" rx="4" fill="#e74c3c"/>
+  <rect x="85" y="67" width="30" height="24" rx="3" fill="#c0392b"/>
+
+  <!-- Hachimaki Tails -->
+  <path d="M 52 79 Q 35 75 30 90 Q 28 95 32 93 Q 40 87 52 85" fill="#e74c3c"/>
+  <path d="M 148 79 Q 165 75 170 90 Q 172 95 168 93 Q 160 87 148 85" fill="#e74c3c"/>
+
+  <!-- Eyes - Confident/Proud -->
+  <ellipse cx="85" cy="85" rx="8" ry="10" fill="#2d3436"/>
+  <ellipse cx="115" cy="85" rx="8" ry="10" fill="#2d3436"/>
+  <!-- Eye Highlights -->
+  <circle cx="88" cy="82" r="3" fill="#ffffff"/>
+  <circle cx="118" cy="82" r="3" fill="#ffffff"/>
+
+  <!-- Eyebrows - Confident Expression -->
+  <path d="M 77 77 Q 85 74 93 77" stroke="#2d3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M 107 77 Q 115 74 123 77" stroke="#2d3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="97" rx="6" ry="4" fill="#f4a8b8"/>
+
+  <!-- Mouth - Confident Smile -->
+  <path d="M 100 101 Q 90 112 78 108" stroke="#2d3436" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M 100 101 Q 110 112 122 108" stroke="#2d3436" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Whiskers -->
+  <line x1="55" y1="90" x2="75" y2="93" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="55" y1="97" x2="75" y2="98" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="93" x2="145" y2="90" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="98" x2="145" y2="97" stroke="#2d3436" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Arms - Hands on Hips (Proud Stance) -->
+  <ellipse cx="60" cy="145" rx="12" ry="18" fill="#ffffff" transform="rotate(35 60 145)"/>
+  <ellipse cx="140" cy="145" rx="12" ry="18" fill="#ffffff" transform="rotate(-35 140 145)"/>
+
+  <!-- Paws on Hips -->
+  <ellipse cx="58" cy="155" rx="10" ry="12" fill="#ffffff" transform="rotate(40 58 155)"/>
+  <ellipse cx="142" cy="155" rx="10" ry="12" fill="#ffffff" transform="rotate(-40 142 155)"/>
+
+  <!-- Chest Puff Detail -->
+  <ellipse cx="100" cy="125" rx="30" ry="20" fill="#fafafa"/>
+
+  <!-- Small Cotton Tail -->
+  <circle cx="100" cy="182" r="8" fill="#ffffff"/>
+</svg>

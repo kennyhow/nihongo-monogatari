@@ -20,9 +20,12 @@ const Header = parentElement => {
 
     parentElement.innerHTML = `
       <div class="header-container">
-        <a href="#/" class="logo">
-          <span class="logo-jp">日本語物語</span>
-          <span class="logo-en">Nihongo Monogatari</span>
+        <a href="#/" class="logo logo--bunny">
+          <img src="/assets/bunny/mascot/bunny-default.svg" alt="Usagi-san bunny mascot" class="logo__bunny-icon">
+          <div style="display: flex; flex-direction: column; gap: var(--space-1);">
+            <span class="logo-jp">日本語物語</span>
+            <span class="logo-en">Nihongo Monogatari</span>
+          </div>
         </a>
 
         <nav class="main-nav">

@@ -156,3 +156,23 @@
     transform: translateX(100%);
   }
 }
+
+/* ============================================
+   ACCESSIBILITY - REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all bunny-themed animations for users who prefer reduced motion */
+  .toast__bunny,
+  .generator-loading__bunny,
+  .empty-state__bunny,
+  .hero__mascot,
+  .logo__bunny-icon {
+    animation: none !important;
+  }
+
+  /* Disable all decorative animations */
+  .animate-pulse,
+  .animate-spin {
+    animation: none !important;
+  }
+}

@@ -1,52 +1,64 @@
 /* ============================================
-   NIHONGO MONOGATARI - Design System v2.0
-   A modern, accessible, Japanese-inspired UI
+   NIHONGO MONOGATARI - Design System v3.0
+   A modern, accessible, bunny-inspired UI
    ============================================ */
 
 /* ============================================
    1. CSS CUSTOM PROPERTIES (Design Tokens)
    ============================================ */
 :root {
-  /* === Color Palette - Sakura & Indigo Theme === */
-  --color-primary: hsl(340, 65%, 47%);
-  --color-primary-hover: hsl(340, 65%, 40%);
-  --color-primary-light: hsl(340, 80%, 95%);
-  --color-primary-glow: hsla(340, 65%, 47%, 0.35);
+  /* === Color Palette - Fresh & Vibrant Bunny Theme === */
+  --color-primary: hsl(142, 65%, 45%);
+  --color-primary-hover: hsl(142, 65%, 38%);
+  --color-primary-light: hsl(142, 80%, 95%);
+  --color-primary-glow: hsla(142, 65%, 45%, 0.35);
 
-  --color-secondary: hsl(245, 58%, 51%);
-  --color-secondary-hover: hsl(245, 58%, 44%);
-  --color-secondary-light: hsl(245, 80%, 95%);
+  --color-secondary: hsl(200, 75%, 55%);
+  --color-secondary-hover: hsl(200, 75%, 48%);
+  --color-secondary-light: hsl(200, 80%, 94%);
 
-  --color-accent: hsl(38, 92%, 50%);
-  --color-accent-light: hsl(38, 92%, 90%);
+  --color-accent: hsl(45, 92%, 52%);
+  --color-accent-light: hsl(45, 92%, 92%);
 
   /* === Semantic Colors === */
-  --color-success: hsl(152, 69%, 40%);
-  --color-success-light: hsl(152, 69%, 92%);
-  --color-warning: hsl(38, 92%, 50%);
-  --color-warning-light: hsl(38, 92%, 90%);
-  --color-error: hsl(0, 72%, 51%);
-  --color-error-light: hsl(0, 72%, 94%);
-  --color-info: hsl(210, 79%, 46%);
-  --color-info-light: hsl(210, 79%, 92%);
+  --color-success: hsl(142, 69%, 40%);
+  --color-success-light: hsl(142, 80%, 94%);
+  --color-warning: hsl(45, 92%, 50%);
+  --color-warning-light: hsl(45, 92%, 92%);
+  --color-error: hsl(5, 72%, 51%);
+  --color-error-light: hsl(5, 72%, 94%);
+  --color-info: hsl(200, 79%, 46%);
+  --color-info-light: hsl(200, 80%, 93%);
 
   /* === Surface Colors === */
-  --color-bg: hsl(40, 50%, 98%);
-  --color-bg-subtle: hsl(40, 30%, 96%);
+  --color-bg: hsl(90, 30%, 97%);
+  --color-bg-subtle: hsl(90, 25%, 94%);
   --color-surface: hsl(0, 0%, 100%);
   --color-surface-raised: hsl(0, 0%, 100%);
   --color-surface-overlay: hsla(0, 0%, 100%, 0.9);
 
   /* === Text Colors === */
-  --color-text: hsl(220, 20%, 14%);
-  --color-text-secondary: hsl(220, 10%, 40%);
-  --color-text-muted: hsl(220, 10%, 55%);
+  --color-text: hsl(120, 15%, 12%);
+  --color-text-secondary: hsl(120, 10%, 35%);
+  --color-text-muted: hsl(120, 8%, 50%);
   --color-text-inverse: hsl(0, 0%, 100%);
 
   /* === Border Colors === */
-  --color-border: hsl(220, 13%, 90%);
-  --color-border-hover: hsl(220, 13%, 80%);
+  --color-border: hsl(120, 20%, 88%);
+  --color-border-hover: hsl(120, 20%, 78%);
   --color-border-focus: var(--color-primary);
+
+  /* === Bunny-Specific Colors === */
+  --color-bunny-white: hsl(120, 10%, 98%);
+  --color-bunny-pink: hsl(345, 75%, 75%);
+  --color-carrot: hsl(28, 85%, 52%);
+  --color-clover: hsl(142, 60%, 40%);
+  --color-sky-light: hsl(200, 70%, 90%);
+  --color-grass-light: hsl(90, 50%, 92%);
+
+  /* === Pattern Opacity === */
+  --pattern-opacity-primary: 0.08;
+  --pattern-opacity-secondary: 0.05;
 
   /* === Typography === */
   --font-en: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;

@@ -1,32 +1,32 @@
 /* ============================================
-   DARK THEME
+   DARK THEME - Bunny Palette
    ============================================ */
 [data-theme='dark'] {
-  --color-primary: hsl(340, 70%, 60%);
-  --color-primary-hover: hsl(340, 70%, 55%);
-  --color-primary-light: hsl(340, 40%, 18%);
-  --color-primary-glow: hsla(340, 70%, 60%, 0.3);
+  --color-primary: hsl(142, 70%, 55%);
+  --color-primary-hover: hsl(142, 70%, 48%);
+  --color-primary-light: hsl(142, 30%, 18%);
+  --color-primary-glow: hsla(142, 70%, 55%, 0.3);
 
-  --color-secondary: hsl(245, 65%, 65%);
-  --color-secondary-light: hsl(245, 30%, 20%);
+  --color-secondary: hsl(200, 70%, 65%);
+  --color-secondary-light: hsl(200, 30%, 20%);
 
-  --color-bg: hsl(220, 20%, 10%);
-  --color-bg-subtle: hsl(220, 18%, 13%);
-  --color-surface: hsl(220, 18%, 14%);
-  --color-surface-raised: hsl(220, 16%, 18%);
-  --color-surface-overlay: hsla(220, 18%, 14%, 0.95);
+  --color-bg: hsl(120, 15%, 10%);
+  --color-bg-subtle: hsl(120, 12%, 13%);
+  --color-surface: hsl(120, 12%, 15%);
+  --color-surface-raised: hsl(120, 10%, 18%);
+  --color-surface-overlay: hsla(120, 12%, 15%, 0.95);
 
-  --color-text: hsl(220, 15%, 95%);
-  --color-text-secondary: hsl(220, 10%, 70%);
-  --color-text-muted: hsl(220, 8%, 55%);
+  --color-text: hsl(120, 10%, 95%);
+  --color-text-secondary: hsl(120, 8%, 70%);
+  --color-text-muted: hsl(120, 6%, 55%);
 
-  --color-border: hsl(220, 15%, 22%);
-  --color-border-hover: hsl(220, 15%, 30%);
+  --color-border: hsl(120, 15%, 22%);
+  --color-border-hover: hsl(120, 15%, 32%);
 
-  --color-success-light: hsl(152, 50%, 15%);
-  --color-warning-light: hsl(38, 50%, 15%);
-  --color-error-light: hsl(0, 50%, 15%);
-  --color-info-light: hsl(210, 50%, 15%);
+  --color-success-light: hsl(142, 50%, 15%);
+  --color-warning-light: hsl(45, 50%, 15%);
+  --color-error-light: hsl(5, 50%, 15%);
+  --color-info-light: hsl(200, 50%, 15%);
 
   --shadow-md: 0 4px 12px hsla(0, 0%, 0%, 0.3);
   --shadow-lg: 0 8px 24px hsla(0, 0%, 0%, 0.4);
